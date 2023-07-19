@@ -21,6 +21,10 @@ def to_dict(obj: Union[dict, DictConfig, ListConfig]) -> dict:
     if isinstance(obj, dict):
         sorted_keys = list(obj.keys())
         sorted_keys.sort()
+    elif is_dataclass(obj):
+        obj = asdict(obj)
+        sorted_keys = list(obj.keys())
+        sorted_keys.sort()
     elif isinstance(obj, (DictConfig, ListConfig)):
         obj = OmegaConf.to_container(
                 obj, resolve=True
