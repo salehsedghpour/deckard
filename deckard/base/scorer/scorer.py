@@ -46,28 +46,9 @@ class ScorerConfig:
         args = args if args is not None else ["y_pred", "y_true"]
         params.update(**kwargs.pop("params", {}))
         self.direction = direction
-        if "args" in kwargs:
-            new_args = kwargs.pop("args")
-            if isinstance(new_args, dict):
-                for v in new_args.values():
-                    if v not in args:
-                        args.append(v)
-            elif isinstance(new_args, DictConfig):
-                new_args = OmegaConf.to_container(new_args, resolve=True)
-                for v in new_args.values():
-                    if v not in args:
-                        args.append(v)
-            elif isinstance(new_args, list):
-                for v in new_args:
-                    if v not in args:
-                        args.append(v)
-            elif isinstance(new_args, ListConfig):
-                new_args = OmegaConf.to_container(new_args, resolve=True)
-                for v in new_args:
-                    if v not in args:
-                        args.append(v)
+        
         self.args = args
-        self.params = kwargs
+        self.params = params
         self.direction = direction
         logger.debug(
             f"Initializing scorer {self.name} with args {self.args} and params {self.params}",
@@ -76,46 +57,31 @@ class ScorerConfig:
     def __hash__(self):
         return int(my_hash(self), 16)
 
-    def score(self, ind, dep) -> float:
+    def score(self, ind, dep, attack=None, model = None, x= None) -> float:
         args = deepcopy(self.args)
         kwargs = deepcopy(self.params)
         new_args = []
         i = 0
         for arg in args:
             i += 1
-            if arg in ["y_pred", "y_train", "y_test"]:
+            if arg in ["x_test", "ind", "x", "x_clean", "x_ben"]:
+                assert x is not None, "x must be provided if x in args"
+                new_args.append(x)
+            elif arg in ["y_pred", "y_train", "y_test"]:
                 new_args.append(dep)
             elif arg in ["labels", "y_true", "ground_truth"]:
                 new_args.append(ind)
-            elif isinstance(arg, str) and Path(arg).exists():
-                arg = self.load(arg)
-                new_args.append(arg)
-            elif isinstance(arg, list):
-                new_args.append(np.array(arg))
-            elif isinstance(arg, ListConfig):
-                arg = OmegaConf.to_container(arg, resolve=True)
-                new_args.extend(arg)
-            elif isinstance(arg, dict):
-                arg = OmegaConf.to_container(arg, resolve=True)
-                new_args.append(arg)
-            elif isinstance(arg, DictConfig):
-                arg = OmegaConf.to_container(arg, resolve=True)
-                new_args.append(arg)
+            elif arg in ["attack", "attacker", "adversary", "adv", "adv_pred"]:
+                assert attack is not None, "Attack must be provided if attack in args"
+                new_args.append(attack)
+            elif arg in ["model", "clf", "classifier", "estimator"]:
+                assert model is not None, "Model must be provided if model in args"
+                new_args.append(model)
             else:
                 raise TypeError(f"Unknown type {type(arg)} for arg {arg}")
         args = new_args
         config = {"_target_": self.name}
         config.update(kwargs)
-        while "params" in config:
-            config.update(**config.pop("params"))
-        while "kwargs" in config:
-            config.update(**config.pop("kwargs"))
-        new_args = []
-        for arg in args:
-            if isinstance(arg, str) and Path(arg).exists():
-                arg = self.load(arg)
-            new_args.append(arg)
-        args = new_args
         try:
             result = call(config, *args, **kwargs)
 
@@ -126,12 +92,6 @@ class ScorerConfig:
                     if hasattr(arg, "shape"):
                         if len(np.squeeze(arg).shape) == 2:
                             arg = np.argmax(np.squeeze(arg), axis=1)
-                        else:
-                            pass
-                    elif isinstance(arg, (ListConfig, DictConfig)):
-                        arg = OmegaConf.to_container(arg, resolve=True)
-                    else:
-                        pass
                     new_args.append(arg)
                 args = new_args
                 result = call(config, *args, **kwargs)
@@ -143,8 +103,6 @@ class ScorerConfig:
                             arg = to_categorical(arg)
                         else:
                             pass
-                    elif isinstance(arg, (ListConfig, DictConfig)):
-                        arg = OmegaConf.to_container(arg, resolve=True)
                     else:
                         pass
                     new_args.append(arg)
@@ -155,33 +113,6 @@ class ScorerConfig:
         return result
 
     def __call__(self, *args, **kwargs) -> float:
-        new_args = []
-        for arg in args:
-            if isinstance(arg, str) and Path(arg).exists():
-                arg = self.load(arg)
-            elif isinstance(arg, np.ndarray):
-                pass
-            elif isinstance(arg, pd.DataFrame):
-                arg = arg.values
-            elif isinstance(arg, pd.Series):
-                arg = arg.values
-            elif isinstance(arg, list):
-                arg = np.array(arg)
-            elif isinstance(DictConfig):
-                arg = OmegaConf.to_container(arg, resolve=True)
-                kwargs.update(**arg)
-            elif isinstance(arg, dict):
-                kwargs.update(**arg)
-            elif isinstance(arg, ListConfig):
-                arg = OmegaConf.to_container(arg, resolve=True)
-            elif isinstance(arg, Data):
-                arg = arg()
-            elif isinstance(arg, Model):
-                _, arg = arg.initialize()
-            elif isinstance(arg, Attack):
-                raise NotImplementedError("Attacks are not supported yet")
-            new_args.append(arg)
-        args = new_args
         score = self.score(*args, **kwargs)
         return score
 
@@ -213,12 +144,9 @@ class ScorerDict:
             if isinstance(v, DictConfig):
                 v = OmegaConf.to_container(v, resolve=True)
                 v = ScorerConfig(**v)
-            elif isinstance(v, dict):
-                v = ScorerConfig(**v)
-            elif isinstance(v, ScorerConfig):
-                pass
             else:
-                raise TypeError(f"Unknown type {type(v)} for scorer {k}")
+                assert isinstance(v, ScorerConfig), "scorer must be a ScorerConfig or DictConfig"
+                pass
             self.scorers[k] = v
 
     def __iter__(self):
@@ -243,7 +171,7 @@ class ScorerDict:
         return scores
 
     def __call__(
-        self, *args, score_dict_file=None, labels_file=None, predictions_file=None
+        self, *args, score_dict_file=None, labels_file=None, predictions_file=None, model_file=None, attack_file=None, data_file = None, **kwargs
     ):
         new_scores = {}
         i = 0
@@ -266,6 +194,14 @@ class ScorerDict:
             args[1] = dep
         else:
             pass
+        if model_file is not None and Path(model_file).exists():
+            model = Model.load(model_file)
+            args[2] = model
+        else:
+            pass
+        if attack_file is not None and Path(attack_file).exists():
+            attack = Attack.load(attack_file)
+            args[3] = attack
         for name, scorer in self:
             score = scorer.score(*args)
             new_scores[name] = score
