@@ -9,7 +9,7 @@ from hydra.utils import instantiate
 from art.utils import to_categorical
 from deckard.base.scorer import ScorerConfig, ScorerDict
 import os
-
+import yaml
 this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 
 
@@ -58,8 +58,8 @@ class testScorerDict(unittest.TestCase):
 
     def test_save(self):
         score_dict = {"test": 1}
-        self.scorers.save(score_dict, self.file)
-        self.assertTrue(Path(self.file).exists())
+        file = self.scorers.save(score_dict, self.file)
+        self.assertTrue(Path(file).exists())
 
     def test_load(self):
         score_dict = {"test": 1}
@@ -159,26 +159,141 @@ class testScorerConfig(unittest.TestCase):
 class testComputeAccuracy(testScorerConfig):
     name: str = "art.utils.compute_accuracy"
     alias: str = "compute_accuracy"
-    params: dict = {"abstain": True, "args": ["y_true", "y_pred"]}
+    params: dict = {"abstain": True}
+    args: list = ["y_pred", "y_true"]
     direction: str = "maximize"
 
 
-model_config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
-model_config_file = "classification.yaml"
-with initialize_config_dir(
-    config_dir=Path(model_config_dir).resolve().as_posix(), version_base="1.3",
-):
-    cfg = compose(config_name=model_config_file)
-model_cfg = cfg
+class testMultiOutput(testScorerConfig):
+    name: str = "sklearn.metrics.accuracy_score"
+    alias: str = "compute_accuracy"
+    args: list = ["y_pred", "y_true"]
+    direction: str = "maximize"
+    
+    def test_score(self):
+        y_pred = np.random.uniform(0, 1, size=(100,2))
+        # y_pred = to_categorical(y_pred)
+        y_true = np.random.randint(0, 2, size=(100,))
+        y_true = to_categorical(y_true)
+        score = self.scorer.score(y_pred, y_true)
+        if isinstance(score, float):
+            self.assertIsInstance(score, float)
+            self.assertGreaterEqual(score, 0)
+            self.assertLessEqual(score, 1)
+        elif isinstance(score, (list, tuple)):
+            for s in score:
+                self.assertIsInstance(s, float)
+                self.assertGreaterEqual(s, 0)
+                self.assertLessEqual(s, 1)
+        else:
+            raise ValueError("Score must be either a float or a list/tuple of floats")
+
+class testBinary(testScorerConfig):
+    name: str = "sklearn.metrics.accuracy_score"
+    alias: str = "compute_accuracy"
+    args: list = ["y_pred", "y_true"]
+    direction: str = "maximize"
+    
+    def test_score(self):
+        y_pred = np.random.uniform(0, 1, size=(100))
+        y_pred = to_categorical(y_pred)
+        y_true = np.random.randint(0, 1, size=(100,))
+        y_true = to_categorical(y_true)
+        score = self.scorer.score(y_pred, y_true)
+        if isinstance(score, float):
+            self.assertIsInstance(score, float)
+            self.assertGreaterEqual(score, 0)
+            self.assertLessEqual(score, 1)
+        elif isinstance(score, (list, tuple)):
+            for s in score:
+                self.assertIsInstance(s, float)
+                self.assertGreaterEqual(s, 0)
+                self.assertLessEqual(s, 1)
+        else:
+            raise ValueError("Score must be either a float or a list/tuple of floats")
+
+class testLen(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".json"
+    score_dict_file = "score_dict"
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.scorers = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+        self.file = Path(
+            self.directory, self.score_dict_file + self.score_dict_type,
+        ).as_posix()
+
+    def test_Len(self):
+        self.assertIsInstance(len(self.scorers), int)
+    
+    def tearDown(self) -> None:
+        rmtree(self.directory)
 
 
-# class testComputeSuccess(testScorerConfig):
-#     name: str = "art.utils.compute_success"
-#     alias: str = "compute_success"
+class testGet(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".json"
+    score_dict_file = "score_dict"
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.scorers = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+        self.file = Path(
+            self.directory, self.score_dict_file + self.score_dict_type,
+        ).as_posix()
 
-#     params: dict = {
-#         "args" : [model_cfg, "x_clean", "labels", "x_adv"],
-#         "targeted" : False,
-#         "batch_size" : 10
-#     },
-#     direction : str = "maximize"
+    def test_get(self):
+        self.assertIsInstance(self.scorers["accuracy"], ScorerConfig)
+    
+    def tearDown(self) -> None:
+        rmtree(self.directory)
+        
+
+class testCompute(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".json"
+    score_dict_file = "score_dict"
+    cfg = """
+    _target_: deckard.base.scorer.ScorerDict
+    compute_success:
+        _target_: deckard.base.scorer.ScorerConfig
+        name : art.utils.compute_success
+        direction: minimize
+        normalize: True
+        args:
+            - y_pred
+            - y_true
+        kwargs: 
+            classifier : #{model.pkl}
+            x_clean : #{x_test.csv}
+            labels : #{labels.json}
+            
+    """
+    def setUp(self):
+        pass
+
+    def test_score(self):
+        config = yaml.safe_load(self.cfg)
+        self.assertIsInstance(instantiate(config), ScorerDict)
+    
+    def tearDown(self) -> None:
+        pass
+
+
+class testScorerDict(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".csv"
+    score_dict_file = "score_dict"
