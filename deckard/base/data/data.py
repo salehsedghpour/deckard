@@ -165,9 +165,11 @@ class Data:
             suffix = Path(filename).suffix
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             if suffix in [".json"]:
-                data = [x.tolist() for x in data]
                 with open(filename, "w") as f:
-                    json.dump(data, f)
+                    try:
+                        json.dump(data, f)
+                    except TypeError:
+                        json.dump(data.tolist(), f)
             elif suffix in [".csv"]:
                 x_train = data[0].tolist()
                 x_test = data[1].tolist()
