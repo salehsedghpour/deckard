@@ -12,7 +12,7 @@ this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 
 class testFiles(unittest.TestCase):
     config_dir = Path(this_dir, "../../conf/files").resolve().as_posix()
-    config_file = "default.yaml"
+    config_file = "sklearn.yaml"
 
     def setUp(self):
         with initialize_config_dir(
@@ -21,7 +21,8 @@ class testFiles(unittest.TestCase):
             cfg = compose(config_name=self.config_file)
         self.cfg = cfg
         self.directory = mkdtemp()
-        self.cfg["directory"] = self.directory
+        if "directory" in self.cfg:
+            self.cfg["directory"] = self.directory
         self.files = instantiate(config=self.cfg)
 
     def test_init(self):
@@ -42,6 +43,7 @@ class testFiles(unittest.TestCase):
         Path(file).parent.mkdir(parents=True, exist_ok=True)
         Path(file).touch()
         status = self.files.check_status()
+        Path(file).unlink()
         self.assertEqual(list(status.values())[0], True)
 
     def test_get_filenames(self):
@@ -51,3 +53,12 @@ class testFiles(unittest.TestCase):
 
     def tearDown(self) -> None:
         rmtree(self.directory)
+
+class testKeras(testFiles):
+    config_file = "keras.yaml"
+
+class testPytorch(testFiles):
+    config_file = "torch.yaml"
+
+class testTensorflow(testFiles):
+    config_file = "tensorflow.yaml"
