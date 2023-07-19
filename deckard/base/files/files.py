@@ -72,15 +72,28 @@ class FileConfig:
         self.files = self._set_filenames(**files)
         logger.debug(f"FileConfig init: {self.files}")
 
-    def __call__(self):
+    def __call__(self) -> Dict[str, str]:
+        """
+        :return: A dictionary of the files.
+        :rtype: dict
+        """
         files = dict(self.get_filenames())
         return files
 
-    def get_filenames(self):
+    def get_filenames(self) -> Dict[str, str]:
+        """
+        :return: A dictionary of the files.
+        :rtype: dict
+        """
         files = deepcopy(self.files)
         return files
 
-    def _set_filenames(self, **kwargs):
+    def _set_filenames(self, **kwargs) -> Dict[str, str]:
+        """
+        :param kwargs: Additional keyword arguments to be added to the files dictionary.
+        :return: A dictionary of the files.
+        :rtype: dict
+        """
         name = kwargs.pop("name", self.name)
         stage = kwargs.pop("stage", self.stage)
         files = dict(kwargs)
@@ -150,6 +163,7 @@ class FileConfig:
     def check_status(self) -> Dict[str, bool]:
         """Check the status of the files.
         :return: A dictionary of the files and whether or not they exist.
+        :rtype: dict
         """
         bools = {}
         files = self()
