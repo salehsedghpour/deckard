@@ -24,6 +24,7 @@ model:
             - ${data.generate.n_features}
         output_dim :
              - ${data.generate.n_classes}
+        device : cpu
     _target_: deckard.base.model.Model
     trainer:
         nb_epoch: 1

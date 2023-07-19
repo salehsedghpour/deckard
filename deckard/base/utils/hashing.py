@@ -17,7 +17,7 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
         sorted_keys = list(obj.keys())
         sorted_keys.sort()
     elif isinstance(obj, OrderedDict):
-        sorted_keys = obj
+        sorted_keys = obj.keys()
     elif isinstance(obj, (DictConfig, OmegaConf)):
         obj = dict(
             deepcopy(

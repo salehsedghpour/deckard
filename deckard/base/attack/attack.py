@@ -32,9 +32,19 @@ class AttackInitializer:
     kwargs: Union[dict, None] = field(default_factory=dict)
 
     def __init__(self, model: Model, name: str, **kwargs):
+        """
+        Initializes an attack object.
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param name: name of attack
+        :type name: str
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         if isinstance(model, Model):
             self.model = model
         elif isinstance(model, DictConfig):
+            model = OmegaConf.to_container(model, resolve=True)
             model = Model(**model)
             self.model = model
         elif isinstance(model, dict):
@@ -50,7 +60,17 @@ class AttackInitializer:
     def __hash__(self):
         return int(my_hash(self), 16)
 
-    def __call__(self, model=None, data=None, attack_size=-1):
+    def __call__(self, model=None, data=None, attack_size=-1) -> object:
+        """Attacks a given dataset  and model.
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :return: attack object
+        
+        """
         logger.info(f"Fitting attack {self.name} with id: {self.__hash__()}")
         name = self.name
         kwargs = deepcopy(self.kwargs)
@@ -119,6 +139,20 @@ class EvasionAttack:
     def __init__(
         self, name: str, data: Data, model: Model, init: dict, attack_size=-1, **kwargs
     ):
+        """Initializes an evasion attack object.
+        :param name: name of attack
+        :type name: str
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param init: initialization parameters for attack
+        :type init: dict
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         self.name = name
         self.data = data
         self.model = model
@@ -138,7 +172,23 @@ class EvasionAttack:
         adv_probabilities_file=None,
         adv_predictions_file=None,
         adv_losses_file=None,
-    ):
+    ) -> dict:
+        """Runs an evasion attack on a given dataset and model and saves the result to a file if provided.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param attack_file: path to file to save attack results
+        :type attack_file: str
+        :param adv_probabilities_file: path to file to save adversarial probabilities
+        :type adv_probabilities_file: str
+        :param adv_predictions_file: path to file to save adversarial predictions
+        :type adv_predictions_file: str
+        :param adv_losses_file: path to file to save adversarial losses
+        :type adv_losses_file: str
+        :return: dictionary of attack results
+        :rtype: dict
+        """
         time_dict = {}
         results = {}
         if attack_file is not None and Path(attack_file).exists():
@@ -255,6 +305,22 @@ class PoisoningAttack:
         target_image=None,
         **kwargs,
     ):
+        """Initializes a poisoning attack object.
+        :param name: name of attack
+        :type name: str
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param init: initialization parameters for attack
+        :type init: dict
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :param target_image: path to target image
+        :type target_image: str
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         if target_image is not None:
             assert Path(
                 target_image,
@@ -279,7 +345,23 @@ class PoisoningAttack:
         adv_probabilities_file=None,
         adv_predictions_file=None,
         adv_losses_file=None,
-    ):
+    ) -> dict:
+        """Runs a poisoning attack on a given dataset and model and saves the result to a file if provided.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param attack_file: path to file to save attack results
+        :type attack_file: str
+        :param adv_probabilities_file: path to file to save adversarial probabilities
+        :type adv_probabilities_file: str
+        :param adv_predictions_file: path to file to save adversarial predictions
+        :type adv_predictions_file: str
+        :param adv_losses_file: path to file to save adversarial losses
+        :type adv_losses_file: str
+        :return: dictionary of attack results
+        :rtype: dict
+        """
         time_dict = {}
         results = {}
         params = deepcopy(self.kwargs.pop("poison", {}))
@@ -315,6 +397,7 @@ class PoisoningAttack:
                         x_train=x_train,
                         y_train=y_train,
                     )
+                    end = process_time_ns()
                 except RuntimeError as e:
                     if "expected scalar type Long" in str(e):
                         # if hasattr(y_train, "type"):
@@ -329,15 +412,69 @@ class PoisoningAttack:
                         x_trigger = torch.tensor(x_trigger, device=device)
                         y_trigger = y_trigger.to(torch.long)
                         y_trigger = y_trigger.to(torch.long)
+                        
+                    elif "not implemented for 'Int'" in str(e):
+                        import torch
+                        device = torch.device(
+                            "cuda" if torch.cuda.is_available() else "cpu",
+                        )
+                        y_train = torch.tensor(y_train, device=device, dtype=torch.long)
+                        y_trigger = torch.tensor(y_trigger, device=device, dtype=torch.long)
+                        x_train = torch.tensor(x_train, device=device, dtype=torch.float32)
+                        x_trigger = torch.tensor(x_trigger, device=device, dtype=torch.float32)
+                    elif "Expected all tensors to be on the same device" in str(e):
+                        import torch
+                        if hasattr(self.model.init, "device"):
+                            device = self.model.init.device
+                        else:
+                            device = torch.device(
+                                "cuda" if torch.cuda.is_available() else "cpu",
+                            )
+                        y_train = torch.tensor(y_train, device=device, dtype=torch.long)
+                        y_trigger = torch.tensor(y_trigger, device=device, dtype=torch.long)
+                        x_train = torch.tensor(x_train, device=device, dtype=torch.float32)
+                        x_trigger = torch.tensor(x_trigger, device=device, dtype=torch.float32)
+                        y_train = y_train.to(device)
+                        y_trigger = y_trigger.to(device)
+                        x_train = x_train.to(device)
+                        x_trigger = x_trigger.to(device)
+                    else:
+                        raise e
+                    try:
+                        start = process_time_ns()
                         samples, _ = atk.poison(
                             x_trigger=x_trigger,
                             y_trigger=y_trigger,
                             x_train=x_train,
                             y_train=y_train,
                         )
-                    else:
-                        raise e
-                end = process_time_ns()
+                        end = process_time_ns()
+                    except AttributeError as e:
+                        y_train = y_train.cpu().numpy()
+                        y_trigger = y_trigger.cpu().numpy()
+                        x_train = x_train.cpu().numpy()
+                        x_trigger = x_trigger.cpu().numpy()
+                        start = process_time_ns()
+                        samples, _ = atk.poison(
+                            x_trigger=x_trigger,
+                            y_trigger=y_trigger,
+                            x_train=x_train,
+                            y_train=y_train,
+                        )
+                        end = process_time_ns()
+                    except TypeError as e:
+                        y_train = y_train.cpu().numpy()
+                        y_trigger = y_trigger.cpu().numpy()
+                        x_train = x_train.cpu().numpy()
+                        x_trigger = x_trigger.cpu().numpy()
+                        start = process_time_ns()
+                        samples, _ = atk.poison(
+                            x_trigger=x_trigger,
+                            y_trigger=y_trigger,
+                            x_train=x_train,
+                            y_train=y_train,
+                        )
+                        end = process_time_ns()
             time_dict.update({"adv_fit_time": (end - start) / 1e9})
             time_dict.update(
                 {"adv_fit_time_per_sample": (end - start) / (len(samples) * 1e9)},
@@ -422,6 +559,20 @@ class InferenceAttack:
     def __init__(
         self, name: str, data: Data, model: Model, init: dict, attack_size=-1, **kwargs
     ):
+        """Initializes an inference attack object.
+        :param name: name of attack
+        :type name: str
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param init: initialization parameters for attack
+        :type init: dict
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         self.name = name
         self.data = data
         self.model = model
@@ -442,6 +593,23 @@ class InferenceAttack:
         adv_predictions_file=None,
         adv_losses_file=None,
     ):
+        """
+        Runs an inference attack on a given dataset and model and saves the result to a file if provided.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param attack_file: path to file to save attack results
+        :type attack_file: str
+        :param adv_probabilities_file: path to file to save adversarial probabilities
+        :type adv_probabilities_file: str
+        :param adv_predictions_file: path to file to save adversarial predictions
+        :type adv_predictions_file: str
+        :param adv_losses_file: path to file to save adversarial losses
+        :type adv_losses_file: str
+        :return: dictionary of attack results
+        :rtype: dict
+        """
         data_shape = data[0][0].shape
         time_dict = {}
         results = {}
@@ -533,6 +701,20 @@ class ExtractionAttack:
     def __init__(
         self, name: str, data: Data, model: Model, init: dict, attack_size=-1, **kwargs
     ):
+        """Initializes an extraction attack object.
+        :param name: name of attack
+        :type name: str
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param init: initialization parameters for attack
+        :type init: dict
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         self.name = name
         self.data = data
         self.model = model
@@ -561,6 +743,23 @@ class ExtractionAttack:
         adv_predictions_file=None,
         adv_losses_file=None,
     ):
+        """
+        Runs an extraction attack on a given dataset and model and saves the result to a file if provided.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param attack_file: path to file to save attack results
+        :type attack_file: str
+        :param adv_probabilities_file: path to file to save adversarial probabilities
+        :type adv_probabilities_file: str
+        :param adv_predictions_file: path to file to save adversarial predictions
+        :type adv_predictions_file: str
+        :param adv_losses_file: path to file to save adversarial losses
+        :type adv_losses_file: str
+        :return: dictionary of attack results
+        :rtype: dict
+        """
         results = {}
         time_dict = {}
         kwargs = deepcopy(self.kwargs.pop("extract", {}))
@@ -677,6 +876,23 @@ class Attack:
         name=None,
         **kwargs,
     ):
+        """
+        Initializes an attack object.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param method: type of attack to run. One of ['evasion', 'poisoning', 'inference', 'extraction']
+        :type method: str
+        :param init: initialization parameters for attack
+        :type init: dict
+        :param attack_size: number of samples to attack. Defaults to -1 (all samples).
+        :type attack_size: int
+        :param name: name of attack
+        :type name: str
+        :param kwargs: keyword arguments for attack
+        :type kwargs: dict
+        """
         if isinstance(data, Data):
             self.data = data
         elif isinstance(data, DictConfig):
@@ -737,7 +953,23 @@ class Attack:
         adv_predictions_file=None,
         adv_probabilities_file=None,
         adv_losses_file=None,
-    ):
+    ) -> dict:
+        """Runs an attack on a given dataset and model and saves the result to a file if provided.
+        :param data: deckard data object
+        :type Data: deckard.data.Data
+        :param model: deckard model object
+        :type Model: deckard.model.Model
+        :param attack_file: path to file to save attack results
+        :type attack_file: str
+        :param adv_probabilities_file: path to file to save adversarial probabilities
+        :type adv_probabilities_file: str
+        :param adv_predictions_file: path to file to save adversarial predictions
+        :type adv_predictions_file: str
+        :param adv_losses_file: path to file to save adversarial losses
+        :type adv_losses_file: str
+        :return: dictionary of attack results
+        :rtype: dict
+        """
         name = self.init.name
         kwargs = deepcopy(self.kwargs)
         kwargs.update({"init": self.init.kwargs})

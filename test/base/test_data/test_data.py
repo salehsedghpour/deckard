@@ -16,7 +16,9 @@ class testSklearnData(unittest.TestCase):
     config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
     config_file = "classification.yaml"
     data_type = ".pkl"
-    data_file = "data.pkl"
+    data_file = "data"
+    test_labels_file = None
+    train_labels_file = None
 
     def setUp(self):
         with initialize_config_dir(
@@ -32,7 +34,15 @@ class testSklearnData(unittest.TestCase):
 
     def test_call(self):
         filename = Path(self.directory, self.data_file + self.data_type).as_posix()
-        X_train, X_test, y_train, y_test = self.data(data_file=filename)
+        if self.train_labels_file is not None:
+            train_labels_file = Path(self.directory, self.train_labels_file).as_posix()
+        else:
+            train_labels_file = self.train_labels_file
+        if self.test_labels_file is not None:
+            test_labels_file = Path(self.directory, self.test_labels_file).as_posix()
+        else:
+            test_labels_file = self.test_labels_file
+        X_train, X_test, y_train, y_test = self.data(data_file=filename, train_labels_file=train_labels_file, test_labels_file=test_labels_file)
         self.assertIsInstance(X_train, np.ndarray)
         self.assertIsInstance(X_test, np.ndarray)
         self.assertIsInstance(y_train, np.ndarray)
@@ -74,6 +84,22 @@ class testSklearnData(unittest.TestCase):
     def tearDown(self) -> None:
         rmtree(self.directory)
 
+class testLoadTwice(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".pkl"
+    data_file = "data"
+    
+    def test_load(self):
+        data_file = Path(self.directory, self.data_file + self.data_type).as_posix()
+        data = [[1,2,3,4], [5,6,7,8], [9,10,11,12], [13,14,15,16]]
+        _ = self.data.save(data, data_file)
+        new_hash = hash(self.data)
+        self.assertTrue(Path(data_file).exists())
+        _ = self.data(data_file = data_file)
+        old_hash = hash(self.data)
+        self.assertEqual(old_hash, new_hash)
+
 
 class testKerasData(testSklearnData):
     config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
@@ -94,3 +120,76 @@ class testTensorflowData(testSklearnData):
     config_file = "tensorflow_mnist.yaml"
     data_type = ".pkl"
     data_file = "data"
+    
+class testCSVData(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".csv"
+    data_file = "data"
+
+class testJSONData(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".json"
+    data_file = "data"
+
+class testExcelData(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic_xlsx.yaml"
+    data_type = ".json"
+    data_file = "data"
+
+class testTrainLabels(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".json"
+    data_file = "data"
+    train_labels_file = "train_labels.pkl"
+
+class testTestLabels(testSklearnData):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".json"
+    data_file = "data"
+    test_labels_file = "test_labels.pkl"
+
+
+
+class testInitValueError(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "classification.yaml"
+    data_type = ".pkl"
+    data_file = "data"
+    test_labels_file = None
+    train_labels_file = None
+
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.data = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+
+    def test_init(self):
+        self.assertRaises(ValueError, self.data, data_file="foo")
+
+class testLoadError(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "titanic.yaml"
+    data_type = ".dill"
+    data_file = "data"
+    
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.data = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+    
+    def test_load(self):
+        data_file = Path(self.directory, self.data_file + self.data_type).as_posix()
+        self.assertRaises(ValueError, self.data.load, data_file)        

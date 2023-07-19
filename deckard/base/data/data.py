@@ -36,15 +36,20 @@ class Data:
         sample: SklearnDataSampler = None,
         sklearn_pipeline: SklearnDataPipeline = None,
         target: str = None,
-    ):
+    ) -> list:
         """Initialize the data object. If the data is generated, then generate the data and sample it. If the data is loaded, then load the data and sample it.
-
-        Args:
-            name (str, optional): The name of the data object. Defaults to None.
-            generate (DataGenerator, optional): The data generator. Defaults to None.
-            sample (SklearnDataSampler, optional): The data sampler. Defaults to None.
-            sklearn_pipeline (SklearnDataPipeline, optional): The sklearn pipeline. Defaults to None.
-            target (str, optional): The target column. Defaults to None.
+        :param name: Name of the data file
+        :type name: str
+        :param generate: Data generator
+        :type generate: DataGenerator
+        :param sample: Data sampler
+        :type sample: SklearnDataSampler
+        :param sklearn_pipeline: Data pipeline
+        :type sklearn_pipeline: SklearnDataPipeline
+        :param target: Target column name
+        :type target: str
+        :return: X_train, X_test, y_train, y_test
+        :rtype: list
         """
         logger.info(
             f"Instantiating {self.__class__.__name__} with name={name} and generate={generate} and sample={sample} and sklearn_pipeline={sklearn_pipeline} and target={target}",
@@ -74,7 +79,11 @@ class Data:
         else:
             self.sklearn_pipeline = None
         self.target = target
-        self.name = name if name is not None else my_hash(self)
+        if name is None:
+            self.name = my_hash(self)
+        else:
+            assert Path(name).exists(), ValueError(f"Data file {name} does not exist")
+        self.name = name 
         logger.debug(f"Instantiating Data with id: {self.get_name()}")
 
     def get_name(self):
@@ -91,40 +100,57 @@ class Data:
         """
         if self.generate is not None:
             result = self.generate()
-            if len(result) == 2:
-                result = self.sample(*result)
-            else:
-                assert len(result) == 4, f"Data is not generated: {self.name}"
+            assert len(result) == 2, f"Data is not generated: {self.name}"
+            
         else:
             result = self.load(self.name)
-            if len(result) == 1:
-                assert self.target is not None, "Target is not specified"
-                y = result[self.target]
-                X = result.drop(self.target, axis=1)
-                result = self.sample(X, y)
-            if len(result) == 2:
-                result = self.sample(*result)
-            assert len(result) == 4
+        result = self.sample(*result)
+        assert len(result) == 4
+        if self.sklearn_pipeline is not None:
+            result = self.sklearn_pipeline(*result)
+        assert len(result) == 4
         return result
 
-    def load(self, filename) -> DataFrame:
+    def load(self, filename) -> list:
         """
         Loads data from a file
-        :param filename: str
-        :return: DataFrame
+        :param filename: Absolute path to the file
+        :type filename: str
+        :return: a list of arrays
+        :rtype: list
         """
         suffix = Path(filename).suffix
         if suffix in [".json"]:
             with open(filename, "r") as f:
                 data = json.load(f)
         elif suffix in [".csv"]:
+            filename = Path(Path().absolute(), filename).as_posix()
             data = read_csv(filename)
-            data = data.to_numpy()
+            if "X_train" in data.columns:
+                assert "X_test" in data.columns
+                assert "y_train" in data.columns
+                assert "y_test" in data.columns
+                X_train = data["X_train"].to_numpy()
+                X_test = data["X_test"].to_numpy()
+                y_train = data["y_train"].to_numpy()
+                y_test = data["y_test"].to_numpy()
+                data = [X_train, X_test, y_train, y_test]
+            else:
+                y = data[self.target]
+                X = data.drop(self.target, axis=1)
+                X = X.to_numpy()
+                y = y.to_numpy()
+                data = [X, y]
         elif suffix in [".pkl", ".pickle"]:
             with open(filename, "rb") as f:
                 data = pickle.load(f)
         elif suffix in [".xls", ".xlsx"]:
             data = read_excel(filename)
+            y = data[self.target]
+            X = data.drop(self.target, axis=1)
+            X = X.to_numpy()
+            y = y.to_numpy()
+            data = [X, y]
         else:
             raise ValueError(f"Unknown file type {suffix}")
         return data
@@ -139,19 +165,20 @@ class Data:
             suffix = Path(filename).suffix
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             if suffix in [".json"]:
-                if isinstance(data, DataFrame):
-                    data = data.to_dict(orient="records")
-                elif isinstance(data, np.ndarray):
-                    data = data.tolist()
+                data = [x.tolist() for x in data]
                 with open(filename, "w") as f:
                     json.dump(data, f)
             elif suffix in [".csv"]:
-                DataFrame(data).to_csv(filename, index=False)
+                x_train = data[0].tolist()
+                x_test = data[1].tolist()
+                y_train = data[2].tolist()
+                y_test = data[3].tolist()
+                df = DataFrame([x_train, x_test, y_train, y_test]).T
+                df.columns=["X_train", "X_test", "y_train", "y_test"]
+                df.to_csv(filename)
             elif suffix in [".pkl", ".pickle"]:
                 with open(filename, "wb") as f:
                     pickle.dump(data, f)
-            elif suffix in [".xls", ".xlsx"]:
-                DataFrame(data).to_excel(filename)
             else:
                 raise ValueError(f"Unknown file type {type(suffix)} for {suffix}")
             assert Path(filename).exists()
@@ -163,17 +190,13 @@ class Data:
         :param filename: str
         :return: list
         """
-        result_dict = {}
         if data_file is not None and Path(data_file).exists():
             data = self.load(data_file)
             assert len(data) == 4, f"Some data is missing: {self.name}"
         else:
             data = self.initialize()
             assert len(data) == 4, f"Some data is missing: {self.name}"
-            data_file = self.save(data, data_file)
-        result_dict["data"] = data
-        if data_file is not None:
-            assert Path(data_file).exists()
+        self.save(data, data_file)
         if train_labels_file is not None:
             self.save(data[2], train_labels_file)
             assert Path(

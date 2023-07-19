@@ -8,15 +8,15 @@ from deckard.base.data.sampler import SklearnDataSampler
 
 this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
-config_file = "classification.yaml"
-
 
 class testSklearnDataSampler(unittest.TestCase):
-    def setUp(self, config_dir=config_dir, config_file=config_file):
+    config_file = "classification.yaml"
+    config_dir = config_dir
+    def setUp(self):
         with initialize_config_dir(
-            config_dir=Path(config_dir).resolve().as_posix(), version_base="1.3",
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
         ):
-            cfg = compose(config_name=config_file)
+            cfg = compose(config_name=self.config_file)
         self.cfg = cfg
         self.data = instantiate(config=self.cfg)
 
@@ -45,15 +45,23 @@ class testSklearnDataSampler(unittest.TestCase):
         pass
 
 
-config_file = "time_series.yaml"
+class testSklearnDataTestSizeFloatSampler(testSklearnDataSampler):
+    config_file = "classification-2.yaml"
+
+
+class testSklearnDataTestSizeNoneSampler(testSklearnDataSampler):
+    config_file = "classification-3.yaml"
+
 
 
 class testTimeSeriesSklearnDataSampler(unittest.TestCase):
+    config_dir = config_dir
+    config_file = "time_series.yaml"
     def setUp(self, config_dir=config_dir, config_file=config_file):
         with initialize_config_dir(
-            config_dir=Path(config_dir).resolve().as_posix(), version_base="1.3",
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
         ):
-            cfg = compose(config_name=config_file)
+            cfg = compose(config_name=self.config_file)
         self.cfg = cfg
         self.data = instantiate(config=self.cfg)
 
@@ -80,3 +88,23 @@ class testTimeSeriesSklearnDataSampler(unittest.TestCase):
 
     def tearDown(self) -> None:
         pass
+
+class testTimeSeriesSklearnDataTestSizeFloatSampler(testTimeSeriesSklearnDataSampler):
+    config_file = "time_series-2.yaml"
+
+class testTimeSeriesSklearnDataTestSizeNoneSampler(testTimeSeriesSklearnDataSampler):
+    config_file = "time_series-3.yaml"
+    
+class testKerasCifar(testTimeSeriesSklearnDataSampler):
+    config_file = "keras_cifar.yaml"
+
+class testKerasMnist(testTimeSeriesSklearnDataSampler):
+    config_file = "keras_mnist.yaml"
+
+class testTorchCifar(testTimeSeriesSklearnDataSampler):
+    config_file = "torch_cifar.yaml"
+
+class testTorchMnist(testTimeSeriesSklearnDataSampler):
+    config_file = "torch_mnist.yaml"
+
+    

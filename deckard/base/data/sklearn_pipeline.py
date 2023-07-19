@@ -30,6 +30,7 @@ class SklearnDataPipelineStage:
         dict_ = {"_target_": name}
         dict_.update(**self.kwargs)
         obj = instantiate(dict_)
+        assert hasattr(obj, "fit") and hasattr(obj, "transform")
         X_train = obj.fit(X_train).transform(X_train)
         X_test = obj.transform(X_test)
         return X_train, X_test, y_train, y_test
@@ -40,52 +41,57 @@ class SklearnDataPipeline:
     pipeline: Union[dict, None] = field(default_factory=dict)
 
     def __init__(self, **kwargs):
+        """
+        Return a pipeline of sklearn transformers
+        :param kwargs: Pipeline stages (optional)
+        :type kwargs: dict
+        :param pipeline: Pipeline stages (optional)
+        :type pipeline: dict
+        """
         pipe = kwargs.pop("pipeline", {})
         pipe.update(**kwargs)
         for stage in pipe:
-            if isinstance(pipe[stage], DictConfig):
-                pipe[stage] = OmegaConf.to_container(pipe[stage])
-                name = pipe[stage].pop("name", pipe[stage].pop("_target_", stage))
-                pipe[stage] = SklearnDataPipelineStage(name, **pipe[stage])
-            elif is_dataclass(pipe[stage]):
-                pipe[stage] = asdict(pipe[stage])
-                name = pipe[stage].pop("name", pipe[stage].pop("_target_", stage))
-                pipe[stage] = SklearnDataPipelineStage(name, **pipe[stage])
-            elif isinstance(pipe[stage], dict):
-                name = pipe[stage].pop("name", pipe[stage].pop("_target_", stage))
-                pipe[stage] = SklearnDataPipelineStage(name, **pipe[stage])
-            elif isinstance(pipe[stage], SklearnDataPipelineStage):
-                pass
-            else:
-                assert hasattr(
-                    pipe[stage], "transform",
-                ), f"Pipeline stage must be a SklearnDataPipelineStage, dict, or have a transform methods. Got {type(pipe[stage])}"
+            name = pipe[stage].pop("name", pipe[stage].pop("_target_", stage))
+            assert isinstance(pipe[stage], DictConfig)
+            pipe[stage] = OmegaConf.to_container(pipe[stage])
+            pipe[stage] = SklearnDataPipelineStage(name, **pipe[stage])
         self.pipeline = pipe
 
     def __getitem__(self, key):
+        """Return the pipeline stage with the given key"""
         return self.pipeline[key]
 
     def __len__(self):
+        """Return the number of stages in the pipeline"""
         return len(self.pipeline)
 
     def __hash__(self):
         return int(my_hash(self), 16)
 
     def __iter__(self):
+        """Iterate over the pipeline stages"""
         return iter(self.pipeline)
 
-    def __call__(self, X_train, X_test, y_train, y_test):
+    def __call__(self, X_train, X_test, y_train, y_test) -> list:
+        """Runs the pipeline on the data
+        :param X_train: Training data
+        :type X_train: np.ndarray
+        :param X_test: Testing data
+        :type X_test: np.ndarray
+        :param y_train: Training labels
+        :type y_train: np.ndarray
+        :param y_test: Testing labels
+        :type y_test: np.ndarray
+        :return: Transformed data
+        :rtype: list
+        """
         logger.info(
             "Calling SklearnDataPipeline with pipeline={}".format(self.pipeline),
         )
         pipeline = deepcopy(self.pipeline)
         for stage in pipeline:
             transformer = pipeline[stage]
-            if isinstance(transformer, SklearnDataPipelineStage):
-                X_train, X_test, y_train, y_test = transformer(
-                    X_train, X_test, y_train, y_test,
-                )
-            else:
-                X_train = transformer.fit(X_train).transform(X_train)
-                X_test = transformer.transform(X_test)
-        return X_train, X_test, y_train, y_test
+            X_train, X_test, y_train, y_test = transformer(
+                X_train, X_test, y_train, y_test,
+            )
+        return [X_train, X_test, y_train, y_test]

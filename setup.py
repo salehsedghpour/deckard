@@ -27,10 +27,12 @@ install_requires = [
     "hydra-optuna-sweeper",
     "hydra-joblib-launcher",
     "sqlalchemy<=1.4.46",
+    "adversarial-robustness-toolbox",
 ]
 test_requires = [
     "pytest",
     "pytest-xdist",
+    "coverage",
 ]
 test_requires += install_requires
 docs_require = [

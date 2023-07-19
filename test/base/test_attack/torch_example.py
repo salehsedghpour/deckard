@@ -3,22 +3,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 __all__ = [
-    "ResNet",
-    "resnet18",
     "LogisticRegression",
 ]
 
+gpu = torch.cuda.is_available()
+default_device = torch.device("cuda" if gpu else "cpu")
 
 class LogisticRegression(nn.Module):
-    def __init__(self, input_dim, output_dim, dtype="torch.FloatTensor", device="cpu"):
+    def __init__(self, input_dim, output_dim, dtype="torch.FloatTensor", device=None):
         self.dtype = dtype
+        if device is None:
+            device = default_device
         self.device = device
         super().__init__()
         self.linear = nn.Linear(input_dim, output_dim)
 
     def forward(self, x):
         x = x.type(torch.FloatTensor)
+        x = x.to(self.device)
         outputs = torch.sigmoid(self.linear(x))
+        outputs = outputs.type(self.dtype)
+        outputs = outputs.to(self.device)
         return outputs
 
 

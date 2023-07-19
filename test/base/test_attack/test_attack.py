@@ -124,7 +124,7 @@ class testAttack(unittest.TestCase):
 
 
 # class testPoisoningAttack(testAttack):
-# TODO: Fix this class
+# # TODO: Fix this class
 #     config_dir = Path(this_dir, "../../conf/attack").resolve().as_posix()
 #     config_file = "poisoning.yaml"
 #     file = "attack.pkl"

@@ -26,6 +26,21 @@ class SklearnDataSampler:
         stratify=False,
         time_series=False,
     ):
+        """
+        Return a sampler for sklearn data
+        :param test_size: Test size (optional)
+        :type test_size: float
+        :param train_size: Train size (optional)
+        :type train_size: float
+        :param random_state: Random state (optional)
+        :type random_state: int
+        :param shuffle: Shuffle (optional)
+        :type shuffle: bool
+        :param stratify: Stratify (optional)
+        :type stratify: bool
+        :param time_series: Time series (optional)
+        :type time_series: bool
+        """
         logger.info(
             f"Instantiating {self.__class__.__name__} with params {asdict(self)}",
         )
@@ -36,7 +51,16 @@ class SklearnDataSampler:
         self.stratify = stratify
         self.time_series = time_series
 
-    def __call__(self, X, y):
+    def __call__(self, X, y) -> list:
+        """
+        Return the sampled data
+        :param X: Input data
+        :type X: np.ndarray
+        :param y: Target data
+        :type y: np.ndarray
+        :return: X_train, X_test, y_train, y_test
+        :rtype: list
+        """
         logger.info(f"Calling SklearnDataSampler with params {asdict(self)}")
         params = deepcopy(asdict(self))
         stratify = params.pop("stratify", False)
@@ -48,34 +72,7 @@ class SklearnDataSampler:
         train_size = params.pop("train_size")
         time_series = params.pop("time_series")
         if time_series is not True:
-            if train_size + test_size == 1:
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X,
-                    y,
-                    test_size=test_size,
-                    train_size=train_size,
-                    stratify=stratify,
-                    **params,
-                )
-            elif train_size + test_size > 1:
-                if test_size is None:
-                    test_size = 0.2 * len(X)
-
-                if isinstance(test_size, int):
-                    test_size = test_size / (train_size + test_size)
-                logger.info(
-                    f"Splitting data with train_size={train_size} and test_size={test_size}",
-                )
-                X_train, X_test, y_train, y_test = train_test_split(
-                    X,
-                    y,
-                    train_size=train_size,
-                    stratify=stratify,
-                    **params,
-                    test_size=test_size,
-                )
-            else:
-                X_train, X_test, y_train, y_test = train_test_split(
+            X_train, X_test, y_train, y_test = train_test_split(
                     X,
                     y,
                     train_size=train_size,

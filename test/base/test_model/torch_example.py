@@ -8,17 +8,22 @@ __all__ = [
     "LogisticRegression",
 ]
 
-
+default_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class LogisticRegression(nn.Module):
-    def __init__(self, input_dim, output_dim, dtype="torch.FloatTensor", device="cpu"):
+    def __init__(self, input_dim, output_dim, dtype="torch.FloatTensor", device=None):
         self.dtype = dtype
+        if device is None:
+            device = default_device
         self.device = device
         super().__init__()
         self.linear = nn.Linear(input_dim, output_dim)
 
     def forward(self, x):
         x = x.type(torch.FloatTensor)
+        x = x.to(self.device)
         outputs = torch.sigmoid(self.linear(x))
+        outputs.type(self.dtype)
+        outputs.to(self.device)
         return outputs
 
 

@@ -8,9 +8,9 @@ To install this, ensure that you have your favorite library installed. To instal
 ```
 python -m pip install .[tensorflow]
 ```
-Add the `-e` flag if you want to edit files:
+Add the `-e` flag if you want to edit files. Below, includes all depedendencies for the test scripts:
 ```
-python -m pip install -e .
+python -m pip install -e .[tensorflow_image,pytorch_image,non_framework,tensorflow,pytorch]
 ```
 You can also try the bash script which attempts to install python if you have root.
 ```
