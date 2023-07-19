@@ -96,6 +96,7 @@ class TorchInitializer:
 
         self.data = data
         self.model = model
+        assert str(library).lower().strip() in supported_models, ValueError("Unknown model library")
         self.library = library
         self.device = kwargs.pop(
             "device", "cuda" if torch.cuda.is_available() else "cpu",
@@ -134,13 +135,8 @@ class TorchInitializer:
                 kwargs.update({"nb_classes": len(np.unique(data[2]))})
             else:
                 kwargs.update({"nb_classes": data[2].shape[1]})
-        if hasattr(model, "to"):
-            model.to(self.device)
-        elif hasattr(model, "model") and hasattr(model.model, "to"):
-            model.model.to(self.device)
-        if library in torch_dict:
-            kwargs.pop("library", None)
-            model = torch_dict[library](model, **kwargs)
-        else:
-            raise NotImplementedError(f"Library {library} not implemented")
+        
+        kwargs.pop("library", None)
+        model = torch_dict[library](model, **kwargs)
+        model.model.to(self.device)
         return model

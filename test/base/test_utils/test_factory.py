@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from hydra.utils import call
 import os
-from deckard.base.utils import make_grid, flatten_dict, unflatten_dict
+from deckard.base.utils import make_grid, flatten_dict, unflatten_dict, factory
 
 this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 
@@ -10,7 +10,7 @@ this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 class testFactory(unittest.TestCase):
     name: str = "sklearn.linear_model.LogisticRegression"
     params: dict = {"C": 1}
-    grid: dict = {"C": [1, 2, 3]}
+    grid: dict = [{"C": [1, 2, 3]}, {"C" : 3}]
     param_dict: dict = {"model": {"init": {"name": name, "params": params}}}
     param_list: list = [{"model.init.name": name, "model.init.params": params}]
 
@@ -22,7 +22,7 @@ class testFactory(unittest.TestCase):
         grid = make_grid(self.grid)
         self.assertIsInstance(grid, list)
         self.assertIsInstance(grid[0], dict)
-        self.assertEqual(len(grid), 3)
+        self.assertEqual(len(grid), 4)
 
     def test_flatten_dict(self):
         flat_dict = flatten_dict(self.param_dict)
@@ -35,3 +35,19 @@ class testFactory(unittest.TestCase):
         self.assertIsInstance(unflat_dict, dict)
         self.assertEqual(len(unflat_dict), 1)
         self.assertEqual(len(unflat_dict["model"]["init"]), 2)
+    
+    def test_factory(self):
+        obj = factory(self.name, **self.params)
+        self.assertTrue(hasattr(obj, "fit"))
+    
+    def test_factory_error(self):
+        self.assertRaises(ValueError, factory, "askldjfas98")
+
+    def test_superclass(self):
+        obj = factory(self.name, **self.params, super_cls=object)
+        self.assertTrue(hasattr(obj, "fit"))
+    
+    def test_kwarg_error(self):
+        self.assertRaises(ValueError, factory, self.name, **self.params, super_cls=object, a=1)
+    
+        

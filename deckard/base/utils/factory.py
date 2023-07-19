@@ -39,8 +39,7 @@ def factory(module_class_string, *args, super_cls: type = None, **kwargs) -> obj
     try:
         module_name, class_name = module_class_string.rsplit(".", 1)
     except Exception as e:  # noqa E722
-        logger.warning(f"Invalid module_class_string: {module_class_string}")
-        raise e
+        raise ValueError(f"Invalid module_class_string: {module_class_string}")
     module = import_module(module_name)
     assert hasattr(module, class_name), "class {} is not in {}".format(
         class_name, module_name,
@@ -55,7 +54,7 @@ def factory(module_class_string, *args, super_cls: type = None, **kwargs) -> obj
     try:
         obj = cls(*args, **kwargs)
     except Exception as e:
-        raise e
+        raise ValueError(f"Error with args {args} and kwargs {kwargs}: {e}")
     return obj
 
 
@@ -79,26 +78,17 @@ def unflatten_dict(dictionary: dict, separator: str = ".") -> dict:
     return result
 
 
-def make_grid(dictionary: list) -> list:
+def make_grid(dict_list: list) -> list:
     """
-    Makes a grid of parameters from a dictionary of lists.
-    :param dictionary: The dictionary of lists to make a grid from.
+    Makes a grid of parameters from a list of dictionaries.
+    :param dict_list: The list of dictionaries to make a grid from.
     :return: A list of dictionaries with all possible combinations of parameters.
     """
     big = []
-    if not isinstance(dictionary, list):
-        assert isinstance(
-            dictionary, dict,
-        ), f"dictionary must be a list or dict, not {type(dictionary)}"
-        dict_list = [dictionary]
-    else:
-        dict_list = dictionary
+    assert isinstance(dict_list, list), f"dictionary is {type(dictionary)}"
     for dictionary in dict_list:
         for k, v in dictionary.items():
-            if isinstance(v, dict):
-                logger.debug(f"Making grid from {v}")
-                dictionary[k] = make_grid(v)
-            elif isinstance(v, list):
+            if isinstance(v, list):
                 logger.debug(f"{v} is a list.")
                 dictionary[k] = v
             else:
