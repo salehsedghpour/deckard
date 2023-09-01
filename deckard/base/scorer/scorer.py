@@ -171,7 +171,7 @@ class ScorerDict:
         return scores
 
     def __call__(
-        self, *args, score_dict_file=None, labels_file=None, predictions_file=None, model_file=None, attack_file=None, data_file = None, **kwargs
+        self, *args, score_dict_file=None, labels_file=None, predictions_file=None, model_file=None, attack_file=None,  **kwargs
     ):
         new_scores = {}
         i = 0
@@ -227,7 +227,10 @@ class ScorerDict:
             with open(full_path, "w") as f:
                 json.dump(results, f)
         elif filetype in [".csv"]:
-            df = pd.DataFrame(results)
+            try:
+                df = pd.DataFrame(results)
+            except ValueError:
+                df = pd.DataFrame.from_dict(results, orient="index")
             df.to_csv(full_path, index=False)
         else:
             raise ValueError(f"filetype {filetype} not supported for saving score_dict")

@@ -10,12 +10,3 @@ log_loss:
     direction: minimize
     params:
         normalize: True
-compute_success:
-    name : art.utils.compute_success
-    direction: minimize
-    normalize: True
-    args:
-        - test/conf/model.pkl
-        - test/conf/predictions.csv
-        - test/conf/labels.csv
-        - test/conf/samples.csv

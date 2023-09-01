@@ -8,11 +8,12 @@ logger = logging.getLogger(__name__)
 
 def flatten_dict(dictionary: dict, separator: str = ".", prefix: str = ""):
     """
-    Flattens a dictionary into a list of dictionarieswith keys separated by the separator.
-    :param dictionary: The dictionary to flatten.
-    :param separator: The separator to use when flattening the dictionary.
-    :param prefix: The prefix to use when flattening the dictionary.
-    :return: A flattened dictionary.
+    Args:
+        dictionary (dict): Dictionary to flatten
+        separator (str, optional): Separator to use when flattening. Defaults to ".".
+        prefix (str, optional): Prefix to use when flattening. Defaults to "".
+    Returns:
+        dict: Flattened dictionary
     """
     stack = [(dictionary, prefix)]
     flat_dict = {}
@@ -29,12 +30,14 @@ def flatten_dict(dictionary: dict, separator: str = ".", prefix: str = ""):
     return flat_dict
 
 
-def factory(module_class_string, *args, super_cls: type = None, **kwargs) -> object:
+def factory(module_class_string, *args, super_cls: str = None, **kwargs) -> object:
     """
-    :param module_class_string: full name of the class to create an object of
-    :param super_cls: expected super class for validity, None if bypass
-    :param kwargs: parameters to pass
-    :return:
+    Factory function for instantiating classes.
+    Args:
+        module_class_string (str): Module and class name to instantiate
+        *args: Arguments to pass to the class
+        super_cls (type, optional): Super class to check inheritance. Defaults to None.
+        **kwargs: Keyword arguments to pass to the class
     """
     try:
         module_name, class_name = module_class_string.rsplit(".", 1)
@@ -60,10 +63,11 @@ def factory(module_class_string, *args, super_cls: type = None, **kwargs) -> obj
 
 def unflatten_dict(dictionary: dict, separator: str = ".") -> dict:
     """Unflattens a dictionary into a nested dictionary.
-    :param dictionary: The dictionary to unflatten.
-    :param separator: The separator to use when unflattening the dictionary.
-    :param prefix: The prefix to use when unflattening the dictionary.
-    :return: An unflattened dictionary.
+    Args:
+        dictionary (dict): Dictionary to unflatten
+        separator (str, optional): Separator to use when unflattening. Defaults to ".".
+    Returns:
+        dict: Unflattened dictionary
     """
     result = {}
     for key, val in dictionary.items():
@@ -81,8 +85,10 @@ def unflatten_dict(dictionary: dict, separator: str = ".") -> dict:
 def make_grid(dict_list: list) -> list:
     """
     Makes a grid of parameters from a list of dictionaries.
-    :param dict_list: The list of dictionaries to make a grid from.
-    :return: A list of dictionaries with all possible combinations of parameters.
+    Args:
+        dict_list (list): List of dictionaries
+    Returns:
+        list: List of dictionaries
     """
     big = []
     assert isinstance(dict_list, list), f"dictionary is {type(dictionary)}"

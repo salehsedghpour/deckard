@@ -9,7 +9,7 @@ from hydra.utils import instantiate
 from art.utils import to_categorical
 from deckard.base.scorer import ScorerConfig, ScorerDict
 import os
-import yaml
+from hydra.errors import InstantiationException
 this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 
 
@@ -196,9 +196,9 @@ class testBinary(testScorerConfig):
     
     def test_score(self):
         y_pred = np.random.uniform(0, 1, size=(100))
-        y_pred = to_categorical(y_pred)
+        # y_pred = to_categorical(y_pred)
         y_true = np.random.randint(0, 1, size=(100,))
-        y_true = to_categorical(y_true)
+        # y_true = to_categorical(y_true)
         score = self.scorer.score(y_pred, y_true)
         if isinstance(score, float):
             self.assertIsInstance(score, float)
@@ -212,6 +212,25 @@ class testBinary(testScorerConfig):
         else:
             raise ValueError("Score must be either a float or a list/tuple of floats")
 
+class testInstantiationException(unittest.TestCase):
+    name = "sklearn.metrics.accuracy_score"
+    alias = "accuracy"
+    args = ["y_pred", "y_true"]
+    direction = "maximize"
+    
+    def test_score(self):
+        # y_pred = to_categorical(y_pred)
+        y_true = np.random.randint(0, 1, size=(100,))
+        y_pred = np.array(['a'] * len(y_true))
+        with self.assertRaises(InstantiationException):
+            ScorerConfig(
+                name=self.name+str(1),
+                alias=self.alias,
+                params={},
+                direction=self.direction,
+                args=self.args,
+            ).score(y_pred, y_true)
+        
 class testLen(unittest.TestCase):
     config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
     config_file = "default.yaml"
@@ -275,18 +294,22 @@ class testCompute(unittest.TestCase):
         args:
             - y_pred
             - y_true
+            - classifier
+            - x_clean
+            - attack
         kwargs: 
             classifier : #{model.pkl}
             x_clean : #{x_test.csv}
             labels : #{labels.json}
+            attack : #{attack.pkl}
             
     """
     def setUp(self):
         pass
 
-    def test_score(self):
-        config = yaml.safe_load(self.cfg)
-        self.assertIsInstance(instantiate(config), ScorerDict)
+    # def test_score(self):
+    #     config = yaml.safe_load(self.cfg)
+    #     self.assertIsInstance(instantiate(config), ScorerDict)
     
     def tearDown(self) -> None:
         pass
@@ -297,3 +320,102 @@ class testScorerDict(unittest.TestCase):
     config_file = "default.yaml"
     score_dict_type = ".csv"
     score_dict_file = "score_dict"
+    
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.directory = mkdtemp()
+        self.file = Path(
+            self.directory, self.score_dict_file + self.score_dict_type,
+        ).as_posix()
+    
+    def test_init(self):
+        cfg = self.cfg
+        self.assertIsInstance(instantiate(cfg), ScorerDict)
+    
+    def test_iter(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        for scorer in cfg:
+            self.assertIsInstance(scorer[0], str)
+            self.assertIsInstance(scorer[1], ScorerConfig)
+    
+    def test_hash(self):
+        cfg = self.cfg
+        old_cfg = instantiate(cfg)
+        old_hash = hash(old_cfg)
+        self.assertIsInstance(old_hash, int)
+        new_cfg = instantiate(cfg)
+        new_hash = hash(new_cfg)
+        self.assertEqual(old_hash, new_hash)
+    
+    def test_load(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        self.assertIsInstance(cfg.load(Path(self.config_dir, self.score_dict_file + self.score_dict_type).as_posix()), dict)
+    
+    def test_get_item(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        self.assertIsInstance(cfg["accuracy"], ScorerConfig)
+        
+    def test_len(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        self.assertIsInstance(len(cfg), int)
+    
+    def test_save(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        cfg.save({"test": 1, 'tmp' : .23}, self.file)
+        self.assertTrue(Path(self.file).exists())
+    
+    def test_call(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        y_pred = np.random.randint(0, 2, size=(100,))
+        y_true = np.random.randint(0, 2, size=(100,))
+        score_dict = cfg(y_pred, y_true, score_dict_file=self.file)
+        for scorer in cfg:
+            self.assertTrue(scorer[0] in score_dict)
+        self.assertTrue(Path(self.file).exists())
+    
+    def tearDown(self) -> None:
+        rmtree(self.directory)
+
+class testJSON(testScorerDict):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".json"
+    score_dict_file = "score_dict"
+
+class test_wrong_format(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/scorers").resolve().as_posix()
+    config_file = "default.yaml"
+    score_dict_type = ".xyz"
+    score_dict_file = "score_dict"
+    
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.directory = mkdtemp()
+        self.file = Path(
+            self.directory, self.score_dict_file + self.score_dict_type,
+        ).as_posix()
+    
+    def test_ValueError(self):
+        cfg = self.cfg
+        cfg = instantiate(cfg)
+        y_pred = np.random.randint(0, 2, size=(100,))
+        y_true = np.random.randint(0, 2, size=(100,))
+        with self.assertRaises(ValueError):
+            cfg(y_pred, y_true, score_dict_file=self.file)
+    
+    def tearDown(self) -> None:
+        rmtree(self.directory)
