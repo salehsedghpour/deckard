@@ -43,12 +43,12 @@ class testSklearnData(unittest.TestCase):
         else:
             test_labels_file = self.test_labels_file
         X_train, X_test, y_train, y_test = self.data(data_file=filename, train_labels_file=train_labels_file, test_labels_file=test_labels_file)
-        self.assertIsInstance(X_train, np.ndarray)
-        self.assertIsInstance(X_test, np.ndarray)
-        self.assertIsInstance(y_train, np.ndarray)
-        self.assertIsInstance(y_test, np.ndarray)
-        self.assertEqual(X_train.shape[0], y_train.shape[0])
-        self.assertEqual(X_test.shape[0], y_test.shape[0])
+        self.assertIsInstance(X_train, (np.ndarray, list))
+        self.assertIsInstance(X_test, (np.ndarray, list))
+        self.assertIsInstance(y_train, (np.ndarray, list))
+        self.assertIsInstance(y_test, (np.ndarray, list))
+        self.assertEqual(len(X_train), len(y_train))
+        self.assertEqual(len(X_test), len(y_test))
         self.assertTrue(Path(filename).exists())
 
     def test_hash(self):

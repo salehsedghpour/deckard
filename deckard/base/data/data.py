@@ -94,9 +94,10 @@ class Data:
         """Get the hash of the data object."""
         return int(my_hash(self), 16)
 
-    def initialize(self):
+    def initialize(self) -> list:
         """Initialize the data object. If the data is generated, then generate the data and sample it. If the data is loaded, then load the data and sample it.
         :return: X_train, X_test, y_train, y_test
+        :rtype: list
         """
         if self.generate is not None:
             result = self.generate()
@@ -108,6 +109,11 @@ class Data:
         assert len(result) == 4
         if self.sklearn_pipeline is not None:
             result = self.sklearn_pipeline(*result)
+        i = 0
+        for entry in result:
+            if not isinstance(entry, np.ndarray):
+                result[i] = np.array(entry)
+            i += 1
         assert len(result) == 4
         return result
 
@@ -123,6 +129,8 @@ class Data:
         if suffix in [".json"]:
             with open(filename, "r") as f:
                 data = json.load(f)
+            i = 0
+            
         elif suffix in [".csv"]:
             filename = Path(Path().absolute(), filename).as_posix()
             data = read_csv(filename)
@@ -153,6 +161,11 @@ class Data:
             data = [X, y]
         else:
             raise ValueError(f"Unknown file type {suffix}")
+        i = 0
+        for entry in data:
+            if not isinstance(entry, np.ndarray):
+                data[i] = np.array(entry)
+            i += 1
         return data
 
     def save(self, data, filename):
@@ -165,11 +178,26 @@ class Data:
             suffix = Path(filename).suffix
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             if suffix in [".json"]:
-                with open(filename, "w") as f:
+                
                     try:
-                        json.dump(data, f)
+                        with open(filename, "w") as f:
+                            json.dump(data, f)
                     except TypeError:
-                        json.dump(data.tolist(), f)
+                        Path(filename).unlink()
+                        with open(filename, "w") as f:
+                            if hasattr(data, "tolist"):
+                                json.dump(data.tolist(), f)
+                            elif isinstance(data, list):
+                                i = 0
+                                for item in data:
+                                    if hasattr(item, "tolist"):
+                                        data[i] = item.tolist()
+                                    else:
+                                        raise TypeError(f"Cannot save data of type {type(item)} to {filename}")
+                                    i += 1
+                                json.dump(data, f)
+                            else:
+                                raise TypeError(f"Cannot save data of type {type(data)} to {filename}")
             elif suffix in [".csv"]:
                 x_train = data[0].tolist()
                 x_test = data[1].tolist()
