@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 def to_dict(obj: Union[dict, DictConfig, ListConfig]) -> dict:
     """
     Recursively convert a DictConfig to a dict.
-    :param obj: DictConfig to convert
-    :type obj: Union[dict, DictConfig, ListConfig]
-    :return: Recursively sorted dict
-    :rtype: dict
+    Args:
+        obj (Union[dict, DictConfig, ListConfig]): DictConfig to convert
+    Returns:
+        dict: Converted dict
     """
     new = {}
     if isinstance(obj, dict):
@@ -57,9 +57,9 @@ def to_dict(obj: Union[dict, DictConfig, ListConfig]) -> dict:
 def my_hash(obj: Union[dict]) -> str:
     """
     Calculate the md5 hash of a sorted dict encoded as a 'utf-8' in hexademical.
-    :param obj: Dict to hash
-    :type obj: Union[dict]
-    :return: md5 hash of the dict
-    :rtype: str
+    Args:
+        obj (Union[dict]): Dict to hash
+    Returns:
+        str: Hash as utf-8 hexademical
     """
     return md5(str(to_dict(obj)).encode("utf-8")).hexdigest()

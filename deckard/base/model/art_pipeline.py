@@ -28,29 +28,88 @@ __all__ = ["ArtPipelineStage", "ArtPipeline", "ArtInitializer"]
 
 @dataclass
 class ArtPipelineStage:
+    """
+    Represents a stage in an art pipeline.
+
+    Args:
+        name (Union[str, None], optional): The name of the pipeline stage. Defaults to None.
+        kwargs (dict, optional): Additional keyword arguments for the pipeline stage. Defaults to an empty dictionary.
+    Methods:
+        __init__(self, name=None, **kwargs): Initializes the ArtPipelineStage object.
+        __hash__(self): Computes the hash value of the ArtPipelineStage object.
+        __call__(self): Executes the pipeline stage.
+    """
+
     name: Union[str, None] = None
     kwargs: dict = field(default_factory=dict)
 
     def __init__(self, name=None, **kwargs):
+        """
+        Initializes a new instance of the ArtPipelineStage class.
+
+        Args:
+            name (Union[str, None], optional): The name of the pipeline stage. Defaults to None.
+            **kwargs: Additional keyword arguments for the pipeline stage.
+        """
         logger.info(f"Creating pipeline stage: {name} kwargs: {kwargs}")
         self.name = name
         self.kwargs = kwargs
 
     def __hash__(self):
+        """
+        Computes the hash value of the ArtPipelineStage object.
+
+        Returns:
+            int: The hash value of the object.
+        """
         return int(my_hash(self), 16)
 
     def __call__(self):
+        """
+        Executes the pipeline stage.
+
+        Returns:
+            tuple: A tuple containing the name of the pipeline stage and its keyword arguments.
+        """
         return self.name, self.kwargs
 
 
 @dataclass
 class ArtInitializer:
+    """
+    Represents a model initializer for an art pipeline.
+
+    Args:
+        model (object): The model object to be used in the pipeline.
+        library (str): The library used by the model.
+        data (list, optional): The data to be used in the pipeline. Defaults to None.
+        kwargs (dict, optional): Additional keyword arguments for the initializer. Defaults to an empty dictionary.
+    
+    Attributes:
+        library (str): The library used by the model.
+        data (list): The data to be used in the pipeline.
+        model (object): The model object to be used in the pipeline.
+        kwargs (dict): Additional keyword arguments for the initializer.
+    
+    Methods:
+
+    """
+
     library: str = None
     data: list = None
     model: object = None
     kwargs: dict = field(default_factory=dict)
 
     def __init__(self, model: object, library: str, data=None, **kwargs):
+        """
+        Initializes a new instance of the ArtInitializer class.
+
+        Args:
+            model (object): The model object to be used in the pipeline.
+            library (str): The library used by the model.
+            data (list, optional): The data to be used in the pipeline. Defaults to None.
+            **kwargs: Additional keyword arguments for the initializer.
+        """
         assert (
             library in supported_models
         ), f"library must be one of {supported_models}. Got {library}"
@@ -60,9 +119,17 @@ class ArtInitializer:
         self.kwargs = kwargs
 
     def __hash__(self):
+        """
+        Computes the hash value of the ArtInitializer object.
+        """
         return int(my_hash(self), 16)
 
     def __call__(self):
+        """
+        Returns the art model object.
+        Returns:
+            BaseEstimator: The art model object.
+        """
         library = self.library
         data = self.data
         model = self.model
@@ -117,6 +184,21 @@ class ArtPipeline:
     name: str = None
 
     def __init__(self, library, name: str = None, **kwargs):
+        """
+        Creates a callable art pipeline object from the specified parameters.
+        A class representing an Art Pipeline.
+
+        Attributes:
+            library (str): The library used for the pipeline.
+            pipeline (Dict[str, ArtPipelineStage]): The stages of the pipeline.
+            name (str): The name of the pipeline.
+
+        Methods:
+            __init__(self, library, name: str = None, **kwargs): Initializes the ArtPipeline object.
+            __len__(self): Returns the number of stages in the pipeline.
+            __hash__(self): Returns the hash value of the ArtPipeline object.
+            __call__(self, model: object, library: str = None, data=None) -> BaseEstimator: Executes the pipeline on the given model.
+        """
         self.library = library
         pipeline = deepcopy(kwargs.pop("pipeline", {}))
         pipeline.update(kwargs)
@@ -155,6 +237,12 @@ class ArtPipeline:
     #     return iter(self.pipeline)
 
     def __call__(self, model: object, library: str = None, data=None) -> BaseEstimator:
+        """
+        Executes the pipeline on the given model.
+        
+        Returns:
+            BaseEstimator: The art model object with the defences applied.
+        """
         if "initialize" in self.pipeline:
             if isinstance(self.pipeline["initialize"], DictConfig):
                 params = OmegaConf.to_container(self.pipeline["initialize"])

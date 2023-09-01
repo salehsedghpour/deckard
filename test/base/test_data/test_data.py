@@ -144,7 +144,7 @@ class testTrainLabels(testSklearnData):
     config_file = "titanic.yaml"
     data_type = ".json"
     data_file = "data"
-    train_labels_file = "train_labels.pkl"
+    train_labels_file = "train_labels.pkls"
 
 class testTestLabels(testSklearnData):
     config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()

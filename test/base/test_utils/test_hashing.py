@@ -57,6 +57,15 @@ class testFactory(unittest.TestCase):
         self.assertRaises(ValueError, my_hash, errorClass())
         things = {"error": errorClass()}
         self.assertRaises(ValueError, to_dict, things)
+        
+    def test_dictconfig(self):
+        dictconfig= OmegaConf.create(self.param_dict)
+        num = my_hash(dictconfig)
+        self.assertIsInstance(num, str)
+        
+    def test_dataclass(self):
+        num = my_hash(self.data_class)
+        self.assertIsInstance(num, str)
                 
     def test_my_hash(self):
         old_hash = my_hash(OmegaConf.create(self.param_dict))
