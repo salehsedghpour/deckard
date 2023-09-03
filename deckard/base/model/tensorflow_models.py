@@ -63,8 +63,7 @@ class TensorflowV2Initializer:
         self.data = data
         self.model = model
         library = library
-        while "kwargs" in kwargs:
-            kwargs.update(**kwargs.pop("kwargs", {}))
+        kwargs.update(**kwargs.pop("kwargs", {}))
         self.kwargs = kwargs
 
     def __call__(self):
@@ -76,33 +75,8 @@ class TensorflowV2Initializer:
         model = self.model
         library = self.library
         loss = kwargs.pop("loss", "categorical_crossentropy")
-        optimizer = kwargs.pop("optimizer", "adam")
-        if isinstance(optimizer, DictConfig):
-            optimizer = OmegaConf.to_container(optimizer)
-        if isinstance(optimizer, dict):
-            name = optimizer.pop("name")
-            params = {**optimizer}
-        elif isinstance(optimizer, str):
-            name = optimizer
-            params = {}
-        else:
-            raise ValueError(
-                f"optimizer must be a dict or str or DictConfig. Got {type(optimizer)} for optimizer: {optimizer}",
-            )
-        optimizer = tf.keras.optimizers.get(name, **params)
-        if isinstance(loss, DictConfig):
-            loss = OmegaConf.to_container(loss)
-        if isinstance(loss, dict):
-            name = loss.pop("name")
-            params = {**loss}
-        elif isinstance(loss, str):
-            name = loss
-            params = {}
-        else:
-            raise ValueError(
-                f"loss must be a dict or str or DictConfig. Got {type(loss)} for loss: {loss}",
-            )
-        loss = tf.keras.losses.get(name, **params)
+        loss = TensorflowV2Loss(loss, **kwargs)
+        _ = TensorflowV2Initializer(data, model, library, **kwargs)
         if "preprocessing" not in kwargs:
             if data[0].shape[-1] > 1:
                 mean = np.mean(data[0], axis=0)
@@ -141,9 +115,6 @@ class TensorflowV2Optimizer:
     name: str
     kwargs: Union[dict, None] = field(default_factory=dict)
 
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.kwargs = kwargs
 
     def __call__(self):
         import tensorflow as tf
@@ -165,10 +136,6 @@ class TensorflowV2Optimizer:
 class TensorflowV1Loss:
     name: str
     kwargs: Union[dict, None] = field(default_factory=dict)
-
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.kwargs = kwargs
 
     def __call__(self):
         import tensorflow as tf
@@ -200,78 +167,7 @@ class TensorflowV1Initializer:
         self.kwargs = kwargs
 
     def __call__(self):
-        # import tensorflow.compat.v1 as tf
-        # kwargs = deepcopy(self.kwargs)
-        # data = self.data
-        # model = self.model
-        # library = self.library
-        # kwargs = deepcopy(self.kwargs)
-        # loss = kwargs.pop("loss", "categorical_crossentropy")
-        # optimizer = kwargs.pop("optimizer", "adam")
-        # if isinstance(optimizer, DictConfig):
-        #     optimizer = OmegaConf.to_container(optimizer)
-        # if isinstance(optimizer, dict):
-        #     name = optimizer.pop("name")
-        #     params = {**optimizer}
-        # elif isinstance(optimizer, str):
-        #     name = optimizer
-        #     params = {}
-        # else:
-        #     raise ValueError(f"optimizer must be a dict or str or DictConfig. Got {type(optimizer)} for optimizer: {optimizer}")
-        # optimizer = factory(name, **params)
-        # if isinstance(loss, DictConfig):
-        #     loss = OmegaConf.to_container(loss)
-        # if isinstance(loss, dict):
-        #     loss_name = loss.pop("name")
-        #     loss_params = {**loss}
-        # else:
-        #     raise ValueError(f"loss must be a dict or str or DictConfig. Got {type(loss)} for loss: {loss}")
-
-        # if "clip_values" not in kwargs:
-        #     min_pixel_value = np.amin(data[0])
-        #     max_pixel_value = np.amax(data[0])
-        #     clip_values = (min_pixel_value, max_pixel_value)
-        # assert hasattr(model, "input_ph"), "Model must have input_ph attribute"
-        # input_ph = model.input_ph
-        # kwargs.pop("input_shape", None)
-        # assert hasattr(model, "labels_ph"), "Model must have labels_ph attribute"
-        # labels_ph = model.labels_ph
-        # kwargs.pop("labels_shape", None)
-        # assert hasattr(model, "output_layer"), "Model must have logits attribute"
-        # outputs = model.output_layer
-        # assert "criterion" in loss_params, f"criterion must be specified in loss params. Got {loss_params.keys()}"
-        # criterion = loss_params.pop("criterion")
-        # assert "reduction" in loss_params, "reduction must be specified in loss params"
-        # reduction = loss_params.pop("reduction")
-
-        # if "sess" not in kwargs:
-        #     sess = tf.compat.v1.Session()
-        # else:
-        #     sess = tf.compat.v1.Session(**kwargs.pop("sess"))
-        # sess.run(tf.compat.v1.global_variables_initializer())
-        # # loss_func = factory(loss_name, model.output_layer, model.labels_ph, **loss_params)
-        # # loss = factory(reduction, loss_func)
-        # loss_func = tf.reduce_mean(tf.losses.softmax_cross_entropy(logits=model.output_layer, onehot_labels=model.labels_ph))
-        # print("Loss")
-        # print(type(loss))
-        # print("Loss function")
-        # print(type(loss_func))
-        # print("Optimizer")
-        # print(type(optimizer))
-        # if criterion == "minimize":
-        #     train = optimizer.minimize(loss_func)
-        # elif criterion == "maximize":
-        #     train = optimizer.maximize(loss_func)
-        # else:
-        #     raise ValueError(f"Criterion {criterion} not supported. Choose one of ['minimize', 'maximize']")
-        # if library in tensorflow_dict:
-        #     model = tensorflow_dict[library](clip_values=clip_values, input_ph=model.input_ph, output=model.output_layer, labels_ph=labels_ph, train=train, loss=loss_func, learning=None, sess=sess, **kwargs)
-        # else:
-        #     raise ValueError(f"Library {library} not supported. Choose one of {tensorflow_dict.keys()}")
-        # return model
-        raise NotImplementedError(
-            "TensorflowV1Initializer not implemented yet. Please use TensorflowV2Initializer.",
-        )
+        raise NotImplementedError("TensorflowV1Initializer not implemented yet")
 
 
 @dataclass
@@ -279,9 +175,6 @@ class TensorflowV1Optimizer:
     name: str
     kwargs: Union[dict, None] = field(default_factory=dict)
 
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.kwargs = kwargs
 
     def __call__(self):
         import tensorflow as tf

@@ -107,6 +107,11 @@ class testTorchModel(testModel):
     config_file = "torch_mnist.yaml"
 
 
+class testBinaryTorchModel(testModel):
+    config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
+    config_file = "torch_binary.yaml"
+
+
 # class testKerasModel(testModel):
 #     config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
 #     config_file = "keras_mnist.yaml"
