@@ -45,13 +45,15 @@ def factory(module_class_string, *args, super_cls: str = None, **kwargs) -> obje
         raise ValueError(f"Invalid module_class_string: {module_class_string}")
     module = import_module(module_name)
     assert hasattr(module, class_name), "class {} is not in {}".format(
-        class_name, module_name,
+        class_name,
+        module_name,
     )
     logger.debug("reading class {} from module {}".format(class_name, module_name))
     cls = getattr(module, class_name)
     if super_cls is not None:
         assert issubclass(cls, super_cls), "class {} should inherit from {}".format(
-            class_name, super_cls.__name__,
+            class_name,
+            super_cls.__name__,
         )
     logger.debug("initialising {} with params {}".format(class_name, kwargs))
     try:

@@ -99,7 +99,8 @@ class TorchInitializer:
         assert str(library).lower().strip() in supported_models, ValueError("Unknown model library")
         self.library = library
         self.device = kwargs.pop(
-            "device", "cuda" if torch.cuda.is_available() else "cpu",
+            "device",
+            "cuda" if torch.cuda.is_available() else "cpu",
         )
         while "kwargs" in kwargs:
             new_kwargs = kwargs.pop("kwargs", {})

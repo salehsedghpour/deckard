@@ -21,14 +21,16 @@ class testScorerDict(unittest.TestCase):
 
     def setUp(self):
         with initialize_config_dir(
-            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+            config_dir=Path(self.config_dir).resolve().as_posix(),
+            version_base="1.3",
         ):
             cfg = compose(config_name=self.config_file)
         self.cfg = cfg
         self.scorers = instantiate(config=self.cfg)
         self.directory = mkdtemp()
         self.file = Path(
-            self.directory, self.score_dict_file + self.score_dict_type,
+            self.directory,
+            self.score_dict_file + self.score_dict_type,
         ).as_posix()
 
     def test_init(self):
