@@ -14,7 +14,7 @@ from .tensorflow_models import (
 )
 from .torch_models import TorchInitializer, torch_dict
 from .sklearn_pipeline import SklearnModelInitializer, sklearn_dict
-from ..utils import my_hash
+from ..utils import my_hash, factory
 
 __all__ = ["ArtPipelineStage", "ArtModelPipeline"]
 logger = logging.getLogger(__name__)
@@ -272,6 +272,8 @@ class ArtPipeline:
                 library in supported_models
             ), f"library must be one of {supported_models}. Got {library}"
         assert len(data) == 4, f"data must be a tuple of length 4. Got {data}"
+        while "kwargs" in kwargs:
+            kwargs.update(**kwargs.pop("kwargs"))
         if "preprocessor" in self.pipeline:
             if isinstance(self.pipeline["preprocessor"], DictConfig):
                 params = OmegaConf.to_container(self.pipeline["preprocessor"])
@@ -288,8 +290,6 @@ class ArtPipeline:
                 params = self.pipeline["preprocessor"]
                 name = params.pop("name", None)
                 sub_kwargs = params.pop("kwargs", {})
-            while "kwargs" in sub_kwargs:
-                sub_kwargs.update(**sub_kwargs.pop("kwargs"))
             config = {
                 "_target_": name,
             }
@@ -298,16 +298,16 @@ class ArtPipeline:
             pre_def.append(obj)
             kwargs.update({"preprocessing_defences": pre_def})
         if "postprocessor" in self.pipeline:
-            if isinstance(self.pipeline["postprocessor"], DictConfig):
-                params = OmegaConf.to_container(self.pipeline["postprocessor"])
-                name = params.pop("name", "_target_")
-            elif is_dataclass(self.pipeline["postprocessor"]):
-                params = asdict(self.pipeline["postprocessor"])
-                name = params.pop("name", "_target_")
-            else:
-                assert isinstance(self.pipeline["postprocessor"], dict)
-                params = self.pipeline["postprocessor"]
-                name = params.pop("name", "_target_")
+            # if isinstance(self.pipeline["postprocessor"], DictConfig):
+            #     params = OmegaConf.to_container(self.pipeline["postprocessor"])
+            #     name = params.pop("name", "_target_")
+            # elif is_dataclass(self.pipeline["postprocessor"]):
+            params = asdict(self.pipeline["postprocessor"])
+            name = params.pop("name", "_target_")
+            # else:
+            #     assert isinstance(self.pipeline["postprocessor"], dict)
+            #     params = self.pipeline["postprocessor"]
+            #     name = params.pop("name", "_target_")
             config = {
                 "_target_": name,
             }
@@ -317,16 +317,10 @@ class ArtPipeline:
             obj = instantiate(config)
             post_def.append(obj)
             kwargs.update({"postprocessing_defences": post_def})
-        while "kwargs" in kwargs:
-            kwargs.update(**kwargs.pop("kwargs"))
+        
         model = ArtInitializer(model=model, data=data, **kwargs, library=library)()
         if "transformer" in self.pipeline:
             name, sub_kwargs = self.pipeline["transformer"]()
-            config = {
-                "_target_": name,
-            }
-            config.update(**sub_kwargs)
-            model = obj(model)
-        if "trainer" in self.pipeline:
-            raise NotImplementedError("Training Defense not implemented yet")
+            obj = factory(name, model, **sub_kwargs)
+            model = obj(transformed_classifier = model, x=data[0])
         return model

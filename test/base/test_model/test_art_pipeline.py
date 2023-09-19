@@ -52,52 +52,26 @@ class testArtPipeline(unittest.TestCase):
         rmtree(self.dir)
 
 
-# class testArtPipeline(unittest.TestCase):
-#     name: str = "initialize"
-#     library: str = "sklearn-svc"
-#     kwargs: dict = {}
-#     config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
-#     config_file = "classification.yaml"
+class testTransformersArtPipeline(testArtPipeline):
+    name: str = "initialize"
+    library: str = "torch"
+    kwargs: dict = {}
+    config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
+    config_file = "transformer_pipeline.yaml"
+    
+class testPostprocessorArtPipeline(testArtPipeline):
+    name: str = "initialize"
+    library: str = "torch"
+    kwargs: dict = {}
+    config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
+    config_file = "postprocessor_pipeline.yaml"
 
-#     def setUp(self):
-#         with initialize_config_dir(
-#             config_dir=Path(self.config_dir).resolve().as_posix(),
-#             version_base="1.3",
-#         ):
-#             cfg = compose(config_name=self.config_file)
-#         self.cfg = cfg
-#         self.model = instantiate(config=self.cfg)
-#         self.stage = self.model.art.pipeline[self.name]
-#         self.dir = mkdtemp()
-
-#     def test_init(self):
-#         self.assertTrue(isinstance(self.stage, ArtPipelineStage))
-
-#     def test_call(self):
-#         model = self.model
-#         model = self.model.art.pipeline[self.name](
-#         )
-#         print(type(model))
-#         input("Press Enter to continue...")
-#         self.assertTrue("art" in str(type(model)).lower())
-#         self.assertTrue(hasattr(model, "fit"))
-#         self.assertTrue(hasattr(model, "predict"))
-
-#     def test_hash(self):
-#         old_hash = hash(self.stage)
-#         self.assertIsInstance(old_hash, int)
-#         stage = self.model.art.pipeline[self.name]
-#         new_hash = hash(stage)
-#         self.assertEqual(old_hash, new_hash)
-#         data, _ = self.model.initialize()
-#         model = self.model.init()
-#         _ = self.model.art(data=data, model=model)
-#         hash_after_call = hash(self.model.art.pipeline[self.name])
-#         self.assertEqual(old_hash, hash_after_call)
-
-#     def tearDown(self) -> None:
-#         rmtree(self.dir)
-
+class testPreprocessorArtPipeline(testArtPipeline):
+    name: str = "initialize"
+    library: str = "torch"
+    kwargs: dict = {}
+    config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
+    config_file = "preprocessor_pipeline.yaml"
 
 class testTorchArtPipeline(testArtPipeline):
     name: str = "initialize"
@@ -105,6 +79,7 @@ class testTorchArtPipeline(testArtPipeline):
     kwargs: dict = {}
     config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
     config_file = "torch_mnist.yaml"
+    
 
 
 # class testKerasArtPipeline(testArtPipeline):
