@@ -110,10 +110,10 @@ class Data:
         if self.sklearn_pipeline is not None:
             result = self.sklearn_pipeline(*result)
         i = 0
-        for entry in result:
-            if not isinstance(entry, np.ndarray):
-                result[i] = np.array(entry)
-            i += 1
+        # for entry in result: 
+        #     if not isinstance(entry, np.ndarray):
+        #         result[i] = np.array(entry)
+        #     i += 1
         assert len(result) == 4
         return result
 

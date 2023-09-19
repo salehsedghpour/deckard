@@ -156,6 +156,7 @@ class testTestLabels(testSklearnData):
 
 
 
+
 class testInitValueError(unittest.TestCase):
     config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
     config_file = "classification.yaml"
@@ -175,6 +176,73 @@ class testInitValueError(unittest.TestCase):
 
     def test_init(self):
         self.assertRaises(ValueError, self.data, data_file="foo")
+
+class testDataTypeError(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "classification.yaml"
+    data_type = ".pkl"
+    data_file = "data"
+    test_labels_file = None
+    train_labels_file = None
+
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.data = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+        self.object = unittest.TestCase()
+        
+
+    def test_save(self):
+        self.assertRaises(TypeError, self.data.save, data=self.object, filename="foo.json")
+        
+class testDataTypeListError(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "classification.yaml"
+    data_type = ".pkl"
+    data_file = "data"
+    test_labels_file = None
+    train_labels_file = None
+
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.data = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+        self.object = [unittest.TestCase()]
+        
+
+    def test_save(self):
+        self.assertRaises(TypeError, self.data.save, data=self.object, filename="foo.json")
+
+class testSaveNumpy(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()
+    config_file = "classification.yaml"
+    data_type = ".pkl"
+    data_file = "data"
+    test_labels_file = None
+    train_labels_file = None
+
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(), version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.data = instantiate(config=self.cfg)
+        self.directory = mkdtemp()
+        self.object = np.array(unittest.TestCase())
+        
+
+    def test_save(self):
+        self.assertRaises(TypeError, self.data.save, data=self.object, filename="foo.json")
+
 
 class testLoadError(unittest.TestCase):
     config_dir = Path(this_dir, "../../conf/data").resolve().as_posix()

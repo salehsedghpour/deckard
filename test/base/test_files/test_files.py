@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import mkdtemp
 from shutil import rmtree
 import os
+from shutil import rmtree
 from hydra import initialize_config_dir, compose
 from hydra.utils import instantiate
 from deckard.base.files import FileConfig
@@ -44,7 +45,10 @@ class testFiles(unittest.TestCase):
         Path(file).parent.mkdir(parents=True, exist_ok=True)
         Path(file).touch()
         status = self.files.check_status()
-        Path(file).unlink()
+        if Path(file).is_file():
+            os.remove(file)
+        else:
+            rmtree(file)
         self.assertEqual(list(status.values())[0], True)
 
     def test_get_filenames(self):
