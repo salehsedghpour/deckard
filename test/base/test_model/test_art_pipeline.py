@@ -51,6 +51,26 @@ class testArtPipeline(unittest.TestCase):
     def tearDown(self) -> None:
         rmtree(self.dir)
 
+class testArtPipelineWithoutInitialize(unittest.TestCase):
+    config_dir = Path(this_dir, "../../conf/model").resolve().as_posix()
+    config_file = "no_initialize.yaml"
+
+    def setUp(self):
+        with initialize_config_dir(
+            config_dir=Path(self.config_dir).resolve().as_posix(),
+            version_base="1.3",
+        ):
+            cfg = compose(config_name=self.config_file)
+        self.cfg = cfg
+        self.model = instantiate(config=self.cfg)
+        self.dir = mkdtemp()
+
+
+    def test_call(self):
+        self.assertRaises(ValueError, self.model.initialize)
+
+    def tearDown(self) -> None:
+        rmtree(self.dir)
 
 class testTransformersArtPipeline(testArtPipeline):
     name: str = "initialize"

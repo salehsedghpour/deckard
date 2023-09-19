@@ -71,6 +71,8 @@ class ArtPipelineStage:
         Returns:
             tuple: A tuple containing the name of the pipeline stage and its keyword arguments.
         """
+        while "kwargs" in self.kwargs:
+            kwargs.update(**self.kwargs.pop("kwargs"))
         return self.name, self.kwargs
 
 
@@ -237,7 +239,7 @@ class ArtPipeline:
     # def __iter__(self):
     #     return iter(self.pipeline)
 
-    def __call__(self, model: object, library: str = None, data=None) -> BaseEstimator:
+    def __call__(self, model: object, data:list) -> BaseEstimator:
         """
         Executes the pipeline on the given model.
         
@@ -245,79 +247,25 @@ class ArtPipeline:
             BaseEstimator: The art model object with the defences applied.
         """
         if "initialize" in self.pipeline:
-            if isinstance(self.pipeline["initialize"], DictConfig):
-                params = OmegaConf.to_container(self.pipeline["initialize"])
-                name = params.pop("name", None)
-                kwargs = params.pop("kwargs", {})
-            elif is_dataclass(self.pipeline["initialize"]):
-                params = asdict(self.pipeline["initialize"])
-                name = params.pop("name", None)
-                kwargs = params.pop("kwargs", {})
-            else:
-                assert isinstance(self.pipeline["initialize"], dict)
-                params = self.pipeline["initialize"]
-                name = params.pop("name", None)
-                kwargs = params.pop("kwargs", {})
-
+            params = asdict(self.pipeline["initialize"])
+            name = params.pop("name", None)
+            kwargs = params.pop("kwargs", {})
         else:
             raise ValueError("Art Pipeline must have an initialize stage")
         pre_def = []
         post_def = []
-        if data is None:
-            data = model.data()
-        if library is None:
-            library = self.library
-        else:
-            assert (
-                library in supported_models
-            ), f"library must be one of {supported_models}. Got {library}"
+        library = self.library
         assert len(data) == 4, f"data must be a tuple of length 4. Got {data}"
-        while "kwargs" in kwargs:
-            kwargs.update(**kwargs.pop("kwargs"))
         if "preprocessor" in self.pipeline:
-            if isinstance(self.pipeline["preprocessor"], DictConfig):
-                params = OmegaConf.to_container(self.pipeline["preprocessor"])
-                name = params.pop("name", None)
-                sub_kwargs = params.pop("kwargs", {})
-                while "kwargs" in sub_kwargs:
-                    sub_kwargs.update(**sub_kwargs.pop("kwargs"))
-            elif is_dataclass(self.pipeline["preprocessor"]):
-                params = asdict(self.pipeline["preprocessor"])
-                name = params.pop("name", None)
-                sub_kwargs = params.pop("kwargs", {})
-            else:
-                assert isinstance(self.pipeline["preprocessor"], dict)
-                params = self.pipeline["preprocessor"]
-                name = params.pop("name", None)
-                sub_kwargs = params.pop("kwargs", {})
-            config = {
-                "_target_": name,
-            }
-            config.update(**sub_kwargs)
-            obj = instantiate(config)
+            name, sub_kwargs = self.pipeline["preprocessor"]()
+            obj = factory(name, model, **sub_kwargs)
             pre_def.append(obj)
             kwargs.update({"preprocessing_defences": pre_def})
         if "postprocessor" in self.pipeline:
-            # if isinstance(self.pipeline["postprocessor"], DictConfig):
-            #     params = OmegaConf.to_container(self.pipeline["postprocessor"])
-            #     name = params.pop("name", "_target_")
-            # elif is_dataclass(self.pipeline["postprocessor"]):
-            params = asdict(self.pipeline["postprocessor"])
-            name = params.pop("name", "_target_")
-            # else:
-            #     assert isinstance(self.pipeline["postprocessor"], dict)
-            #     params = self.pipeline["postprocessor"]
-            #     name = params.pop("name", "_target_")
-            config = {
-                "_target_": name,
-            }
-            while "kwargs" in params:
-                params.update(**params.pop("kwargs"))
-            config.update(**params)
-            obj = instantiate(config)
+            name, sub_kwargs = self.pipeline["postprocessor"]()
+            obj = factory(name, **sub_kwargs)
             post_def.append(obj)
             kwargs.update({"postprocessing_defences": post_def})
-        
         model = ArtInitializer(model=model, data=data, **kwargs, library=library)()
         if "transformer" in self.pipeline:
             name, sub_kwargs = self.pipeline["transformer"]()

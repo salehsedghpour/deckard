@@ -20,13 +20,4 @@ library : torch
 art:
     library : torch
     _target_ : deckard.base.model.art_pipeline.ArtPipeline
-    initialize:
-        criterion:
-            name : "torch.nn.CrossEntropyLoss"
-        optimizer:
-            name : "torch.optim.SGD"
-            lr : 0.01
-            momentum : 0.9
-    postprocessor:
-        name: art.defences.postprocessor.GaussianNoise
     

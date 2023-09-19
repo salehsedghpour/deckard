@@ -59,7 +59,8 @@ def factory(module_class_string, *args, super_cls: str = None, **kwargs) -> obje
     try:
         obj = cls(*args, **kwargs)
     except Exception as e:
-        raise ValueError(f"Error with args {args} and kwargs {kwargs}: {e}")
+        logger.info(f"Error with args {args} and kwargs {kwargs}: {e}")
+        raise e
     return obj
 
 
