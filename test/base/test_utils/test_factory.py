@@ -48,6 +48,6 @@ class testFactory(unittest.TestCase):
         self.assertTrue(hasattr(obj, "fit"))
     
     def test_kwarg_error(self):
-        self.assertRaises(ValueError, factory, self.name, **self.params, super_cls=object, a=1)
+        self.assertRaises(TypeError, factory, self.name, **self.params, super_cls=object, a=1)
     
         
