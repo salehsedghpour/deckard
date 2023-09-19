@@ -14,15 +14,15 @@ bash models.sh attack=hsj ++attack.init.name=art.attacks.evasion.DeepFool ++atta
 # HopSkipJump
 bash models.sh attack=hsj ++attack.init.name=art.attacks.evasion.HopSkipJump ++attack.init.max_iter=1,3,5,10  ++attack.init.init_eval=10 ++attack.init.norm=inf,2 ++stage=attack ++hydra.sweeper.study_name=hsj ++hydra.sweeper.direction=minimize $@
 
-#####################################################
+# #####################################################
 # PixelAttack
-bash models.sh attack=hsj ++attack.init.name=art.attacks.evasion.PixelAttack ++attack.init.max_iter=10 ++attack.init.th=1,4,16,64,256 ++stage=attack ++hydra.sweeper.study_name=pixel ++hydra.sweeper.direction=minimize $@
+bash models.sh attack=hsj  ++attack.init.name=art.attacks.evasion.PixelAttack ++attack.init.max_iter=10 ++attack.init.th=1,4,16,64,256 ++stage=attack ++hydra.sweeper.study_name=pixel ++hydra.sweeper.direction=minimize $@
 
-# # ThresholdAttack
+# ThresholdAttack
 bash models.sh attack=hsj ++attack.init.name=art.attacks.evasion.ThresholdAttack ++attack.init.max_iter=10 ++attack.init.th=1,4,16,64,256 ++stage=attack ++hydra.sweeper.study_name=thresh ++hydra.sweeper.direction=minimize $@
 
 # # AdversarialPatch
-bash models.sh attack=hsj --attack.init.batch_size ++attack.init.name=art.attacks.evasion.AdversarialPatch ++attack.init.max_iter=10 ++attack.init.learning_rate=.5,5.0,50.0 ++stage=patch ++hydra.sweeper.study_name=attack ++hydra.sweeper.direction=minimize ++attack.init.patch_shape=[1,28,28] $@
+# bash models.sh attack=hsj --attack.init.batch_size ++attack.init.name=art.attacks.evasion.AdversarialPatch ++attack.init.max_iter=10 ++attack.init.learning_rate=.5,5.0,50.0 ++stage=patch ++hydra.sweeper.study_name=attack ++hydra.sweeper.direction=minimize ++attack.init.patch_shape=[1,28,28] $@
 #####################################################
 
 # Carlini L0 Method
