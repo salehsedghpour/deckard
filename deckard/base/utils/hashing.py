@@ -13,11 +13,16 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
     new = {}
     if hasattr(obj, "_asdict"):
         obj = obj._asdict()
-    if isinstance(obj, dict):
+    elif is_dataclass(obj):
+        obj = deepcopy(asdict(obj))
+        sorted_keys = list(obj.keys())
+        sorted_keys.sort()
+    if isinstance(obj, dict) and not isinstance(obj, OrderedDict):
         sorted_keys = list(obj.keys())
         sorted_keys.sort()
     elif isinstance(obj, OrderedDict):
-        sorted_keys = obj
+        sorted_keys = list(obj.keys())
+        sorted_keys.sort()
     elif isinstance(obj, (DictConfig, OmegaConf)):
         obj = dict(
             deepcopy(
@@ -39,29 +44,16 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
             if isinstance(entry, dict):
                 keys.extend(list(entry.keys()))
                 values.extend(list(entry.values()))
-            elif isinstance(entry, str):
-                assert ":" in entry, f"entry {entry} is not a key:value pair"
-                key, value = entry.split(":")
-                keys.append(key)
-                values.append(str(value))
-            else:
+            else: # pragma: no cover
                 raise ValueError(f"entry {entry} is not a key:value pair")
         sorted_keys = keys
         obj = OrderedDict(zip(keys, values))
-    elif is_dataclass(obj):
-        obj = deepcopy(asdict(obj))
-        sorted_keys = list(obj.keys())
-        sorted_keys.sort()
     elif isinstance(obj, str):
         obj = obj
         sorted_keys = []
-    elif isinstance(obj, type(None)):
-        obj = None
-        sorted_keys = []
-    elif is_dataclass(obj):
-        obj = deepcopy(asdict(obj))
-        sorted_keys = list(obj.keys())
-        sorted_keys.sort()
+    # elif isinstance(obj, type(None)):
+    #     obj = None
+    #     sorted_keys = []
     elif isinstance(obj, (tuple)):
         sorted_keys = [obj[0]]
         value = obj[1]
@@ -74,18 +66,18 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
     for key in sorted_keys:
         if obj[key] is None:
             continue
+        if isinstance(obj[key], (list, tuple)):
+            new[key] = [to_dict(x) for x in obj[key]] #
         elif isinstance(obj[key], (str, float, int, bool, tuple, list)):
             new[key] = obj[key]
-        elif is_dataclass(obj[key]):
-            new[key] = asdict(obj[key])
         elif isinstance(obj[key], (DictConfig)):
-            new[key] = to_dict(obj[key])
+            new[key] = to_dict(obj[key]) #
         elif isinstance(obj[key], (ListConfig)):
-            new[key] = OmegaConf.to_container(obj[key], resolve=True)
+            new[key] = to_dict(obj[key]) #
         elif isinstance(obj[key], (dict)):
             new[key] = to_dict(obj[key])
-        elif isinstance(obj[key], (list, tuple)):
-            new[key] = [to_dict(x) for x in obj[key]]
+        elif is_dataclass(obj[key]):
+            new[key] = asdict(obj[key])
         else: # pragma: no cover
            raise TypeError(f"obj[{key}] is of type {type(obj[key])}")
     return new

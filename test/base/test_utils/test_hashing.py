@@ -13,6 +13,9 @@ this_dir = Path(os.path.realpath(__file__)).parent.resolve().as_posix()
 class testClass:
     C: int = 1
 
+@dataclass 
+class testModel:
+    C : int = 1
 # @dataclass
 # class testClass2:
 #     data : testClass = testClass(C = 1)
@@ -71,9 +74,32 @@ class testListHashing(testHashing):
     configs = ["ordered_dict",  "named_tuple", "dict_config", "list_config", "tuple_config", "list_config_config"]
 
 
+
 class testNestedHashing(testHashing):
     param_dict = OmegaConf.create({"data" : OmegaConf.create([{"A": 1}, {"B": 2}]), "model" : {"C": 1}})
-    ordered_dict = OrderedDict({"data": [{"A": 1}, {"B": 2}], "model" : {"C": 1}})
-    configs = ["ordered_dict", "param_dict"]
+    ordered_dict = OrderedDict({"data": [{"A": 1}, {"B": 2}], "model" : testModel(C = 1)})
+    dict_config = {"data" : OmegaConf.create([{"A": 1}, {"B": 2}]), "model" : {"C": 1}}
+    list_config = {"data" : {"A": 1, "B" : 2}, "model" : OmegaConf.create({"C": 1})}
+    tuple_config = ("data", [{"A": 1}, {"B": 2}], "model", ("C", 1))
+    configs = ["ordered_dict", "param_dict", "dict_config", "list_config", "tuple_config"]
     
+    def test_my_hash(self):
+        for thing in self.configs:
+            new_hash = my_hash(getattr(self, thing))
+            self.assertIsInstance(new_hash, str)
+    
+    def test_to_dict(self):
+        for thing in self.configs:
+            new_dict = to_dict(getattr(self, thing))
+            self.assertIsInstance(new_dict, dict)
+
+class testStringHashing(testHashing):
+    param_dict = "data"
+    string_config = OmegaConf.create("data")
+    configs = ["param_dict", "string_config"]
+  
+class testNoneHashing(testHashing):
+    param_dict = {"data" : None}
+    none_config = OmegaConf.create({"data" : None})
+    configs = ["param_dict", "none_config"]  
     
