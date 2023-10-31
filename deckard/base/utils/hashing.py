@@ -30,10 +30,24 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
         )
         sorted_keys = list(obj.keys())
         sorted_keys.sort()
-    elif isinstance(obj, (ListConfig)):
-        obj = deepcopy(OmegaConf.to_container(obj, resolve=True))
-        sorted_keys = list(obj.keys())
-        sorted_keys.sort()
+    elif isinstance(obj, (ListConfig, list)):
+        if isinstance(obj, (ListConfig)):
+            obj = deepcopy(OmegaConf.to_container(obj, resolve=True))
+        keys = []
+        values = []
+        for entry in obj:
+            if isinstance(entry, dict):
+                keys.extend(list(entry.keys()))
+                values.extend(list(entry.values()))
+            elif isinstance(entry, str):
+                assert ":" in entry, f"entry {entry} is not a key:value pair"
+                key, value = entry.split(":")
+                keys.append(key)
+                values.append(str(value))
+            else:
+                raise ValueError(f"entry {entry} is not a key:value pair")
+        sorted_keys = keys
+        obj = OrderedDict(zip(keys, values))
     elif is_dataclass(obj):
         obj = deepcopy(asdict(obj))
         sorted_keys = list(obj.keys())
@@ -48,34 +62,32 @@ def to_dict(obj: Union[dict, OrderedDict, NamedTuple]) -> dict:
         obj = deepcopy(asdict(obj))
         sorted_keys = list(obj.keys())
         sorted_keys.sort()
-    else:
+    elif isinstance(obj, (tuple)):
+        sorted_keys = [obj[0]]
+        value = obj[1]
+        key = obj[0]
+        obj = {key : value}
+    else: # pragma: no cover
         raise ValueError(
             f"obj must be a Dict, namedtuple or OrderedDict. It is {type(obj)}",
         )
     for key in sorted_keys:
-        try:
-            if obj[key] is None:
-                continue
-            elif isinstance(obj[key], (str, float, int, bool, tuple, list)):
-                new[key] = obj[key]
-            elif is_dataclass(obj[key]):
-                new[key] = asdict(obj[key])
-            elif isinstance(obj[key], (DictConfig)):
-                new[key] = to_dict(obj[key])
-            elif isinstance(obj[key], (ListConfig)):
-                new[key] = OmegaConf.to_container(obj[key], resolve=True)
-            elif isinstance(obj[key], (dict)):
-                new[key] = to_dict(obj[key])
-            elif isinstance(obj[key], (list, tuple)):
-                new[key] = [to_dict(x) for x in obj[key]]
-            else:
-                new[key] = obj[key]
-        except Exception as e:
-            logger.error(f"Error while converting {key} to dict")
-            logger.error(f"obj[key] = {obj[key]}")
-            logger.error(f"type(obj[key]) = {type(obj[key])}")
-            logger.error(f"obj = {obj}")
-            raise e
+        if obj[key] is None:
+            continue
+        elif isinstance(obj[key], (str, float, int, bool, tuple, list)):
+            new[key] = obj[key]
+        elif is_dataclass(obj[key]):
+            new[key] = asdict(obj[key])
+        elif isinstance(obj[key], (DictConfig)):
+            new[key] = to_dict(obj[key])
+        elif isinstance(obj[key], (ListConfig)):
+            new[key] = OmegaConf.to_container(obj[key], resolve=True)
+        elif isinstance(obj[key], (dict)):
+            new[key] = to_dict(obj[key])
+        elif isinstance(obj[key], (list, tuple)):
+            new[key] = [to_dict(x) for x in obj[key]]
+        else: # pragma: no cover
+           raise TypeError(f"obj[{key}] is of type {type(obj[key])}")
     return new
 
 

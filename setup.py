@@ -35,6 +35,7 @@ test_requires = [
     "torch",
     "torchvision",
     "tensorflow",
+    "coverage",
 ]
 test_requires += install_requires
 docs_require = [
